@@ -1,0 +1,6 @@
+# ToDo move this into examples
+exercises/docs/
+exercises/cache/
+exercises/out/
+exercises/lib/
+.env
