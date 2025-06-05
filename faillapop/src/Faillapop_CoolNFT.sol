@@ -59,4 +59,32 @@ contract FP_CoolNFT is IFP_CoolNFT, ERC721 {
             emit CoolNFTs_Slashed(owner);
         }
     }
+
+    /**
+     * @dev Override para prevenir aprobaciones
+     */
+    function approve(address to, uint256 tokenId) public virtual override {
+        revert("CoolNFT cannot be approved");
+    }
+
+    /**
+     * @dev Override para prevenir aprobaciones
+     */
+    function setApprovalForAll(address operator, bool approved) public virtual override {
+        revert("CoolNFT cannot be approved");
+    }
+
+    /**
+     * @dev Override para prevenir transferencias
+     */
+    function transferFrom(address from, address to, uint256 tokenId) public virtual override {
+        revert("CoolNFT cannot be transferred");
+    }
+
+    /**
+     * @dev Override para prevenir transferencias
+     */
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public virtual override {
+        revert("CoolNFT cannot be transferred");
+    }
 }

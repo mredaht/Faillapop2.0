@@ -1,6 +1,25 @@
+# Foundry
+out/
+cache/
+cache_forge/
+
+# Environment variables
+.env
+.env.local
+
+# Node modules
+node_modules/
+
 # ToDo move this into examples
 exercises/docs/
 exercises/cache/
 exercises/out/
 exercises/lib/
-.env
+
+# OS files
+.DS_Store
+*.log
+
+# IDE
+.vscode/
+.idea/

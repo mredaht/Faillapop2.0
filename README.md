@@ -2,6 +2,58 @@
 
 Welcome to the Solidity Security and Auditing Examples repository! This collection contains a variety of practical examples and exercises that I use during my lectures on Solidity security and auditing. These resources are tailored for students who possess a 🌱 beginner 🌱 level of practical knowledge in the Solidity language and smart contract development. If you're ready to take the next step and delve into the realm of security, you're in the right place.
 
+## Installation
+
+1. Install Foundry:
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+```
+
+2. Clone the repository and install dependencies:
+```bash
+git clone https://github.com/jcr-security/solidity-security-teaching-resources.git
+cd solidity-security-teaching-resources
+forge install
+```
+
+3. Install frontend dependencies:
+```bash
+cd frontend
+npm install
+```
+
+## Usage
+
+### Smart Contracts (using Foundry)
+
+1. Start a local blockchain:
+```bash
+anvil
+```
+
+2. In a new terminal, compile the contracts:
+```bash
+forge build
+```
+
+3. Run the tests:
+```bash
+forge test
+```
+
+4. Deploy the contracts:
+```bash
+forge script script/DeployFaillapop.s.sol --broadcast
+```
+
+### Frontend
+
+1. Start the frontend development server:
+```bash
+npm run dev
+```
+
 ## Repository Structure
 
 This repository is organized into the following sections:

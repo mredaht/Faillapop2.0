@@ -11,9 +11,11 @@ import {FP_Vault} from "../src/Faillapop_vault.sol";
 import {FP_Proxy} from "../src/Faillapop_Proxy.sol";
 
 contract DeployFaillapop is Script {
+    // Clave privada de prueba de Anvil (primera cuenta)
+    uint256 constant PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
     function run() external returns(FP_Shop shop, FP_Token token, FP_CoolNFT coolNFT, FP_PowersellerNFT powersellerNFT, FP_DAO dao, FP_Vault vault, FP_Proxy proxy) {
-        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
+        vm.startBroadcast(PRIVATE_KEY);
         shop = new FP_Shop();
         token = new FP_Token();
         coolNFT = new FP_CoolNFT();
@@ -35,7 +37,6 @@ contract DeployFaillapop is Script {
         vault.setShop(address(proxy));
         dao.setShop(address(proxy));
         powersellerNFT.setShop(address(proxy));
-        coolNFT.setShop(address(proxy));
         coolNFT.setDAO(address(dao));
         vm.stopBroadcast();
     }

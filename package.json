@@ -1,0 +1,14 @@
+{
+  "name": "faillapop-vuln",
+  "version": "1.0.0",
+  "description": "Vulnerable marketplace for educational purposes",
+  "scripts": {
+    "dev": "cd frontend && npm start"
+  },
+  "devDependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "@openzeppelin/contracts-upgradeable": "^5.0.1",
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.3"
+  }
+}

@@ -15,17 +15,14 @@ contract Faillapop_ERC20_Test is Test {
     function setUp() external {
         vm.deal(ADMIN, 10);
         vm.deal(USER, 10);
-        vm.prank(ADMIN);
         token = new FP_Token();
     }
 
     /************************************** Tests **************************************/
 
     function test_setUp() public {
-        assertTrue(token.hasRole(0x00, address(ADMIN)), "Owner should have DEFAULT_ADMIN_ROLE");
-        assertTrue(token.hasRole(bytes32(token.PAUSER_ROLE()), address(ADMIN)), "Owner should have PAUSER_ROLE");
-        assertTrue(token.hasRole(bytes32(token.MINTER_ROLE()), address(ADMIN)), "Owner should have MINTER_ROLE");
-        assertEq(token.balanceOf(address(ADMIN)), 1000000 * 10 ** token.decimals(), "Incorrect token balance after minting");
+        // No initial supply in vulnerable version
+        assertEq(token.balanceOf(address(ADMIN)), 0, "Initial balance should be 0");
     }
 
     function testTokenNameAndSymbol() public {
@@ -33,52 +30,26 @@ contract Faillapop_ERC20_Test is Test {
         assertEq(token.symbol(), "FPT", "Incorrect token symbol");
     }
 
-    function test_pause() public {
-        vm.prank(ADMIN);
-        token.pause();
-
-        assertTrue(token.paused(), "Contract should be paused");
-    }
-
-    function test_pause_RevertIf_CallerIsNotPauser() public {
-        vm.prank(USER);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", address(USER), keccak256("PAUSER_ROLE")));
-        token.pause();
-    }
-
-    function test_unpause() public {
-        vm.startPrank(ADMIN);
-        token.pause();
-        token.unpause();
-        vm.stopPrank();
-        assertFalse(token.paused(), "Contract should be unpaused");
-    }
-
-    function test_unpause_RevertIf_CallerIsNotPauser() public {
-        vm.prank(USER);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", address(USER), keccak256("PAUSER_ROLE")));
-        token.unpause();
-    }
-
-    function test_mint() public {
+    function test_mint_AnyoneCanMint() public {
         address to = USER;
         uint256 amount = 1000;
 
-        vm.prank(ADMIN);
+        // Anyone can mint in vulnerable version
         token.mint(to, amount);
-
         assertEq(token.balanceOf(to), amount, "Incorrect token balance after minting");
-    }
 
-    function test_mint_RevertIf_CallerIsNotMinter() public {
-        address to = USER;
-        uint256 amount = 1000;
-
+        // Even USER can mint for themselves
         vm.prank(USER);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", address(USER), keccak256("MINTER_ROLE")));
-        token.mint(to, amount);
-
-        assertEq(token.balanceOf(to), 0, "Incorrect token balance after minting");
+        token.mint(USER, amount);
+        assertEq(token.balanceOf(USER), amount * 2, "Incorrect token balance after second mint");
     }
 
+    function test_mint_NoLimit() public {
+        address to = USER;
+        uint256 largeAmount = 1000000000 * 10**18; // 1 billion tokens
+
+        // Can mint any amount in vulnerable version
+        token.mint(to, largeAmount);
+        assertEq(token.balanceOf(to), largeAmount, "Should be able to mint large amounts");
+    }
 }
