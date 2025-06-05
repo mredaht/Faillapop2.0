@@ -1,90 +1,227 @@
-# Solidity Security and Auditing Examples
+# Faillapop - Project Documentation
 
-Welcome to the Solidity Security and Auditing Examples repository! This collection contains a variety of practical examples and exercises that I use during my lectures on Solidity security and auditing. These resources are tailored for students who possess a 🌱 beginner 🌱 level of practical knowledge in the Solidity language and smart contract development. If you're ready to take the next step and delve into the realm of security, you're in the right place.
+## 📌 Based On
+
+This project is an **extension and adaptation of the original [`faillapop`](https://github.com/jcsec-security/faillapop)** repository developed by [jcsec-security](https://github.com/jcsec-security). It builds upon its architecture and concept, introducing improvements in user experience, interface, and features on the Ethereum blockchain.
+
+---
+
+## Description
+
+**Faillapop** is a decentralized marketplace application that enables users to buy and sell products using blockchain technology (Ethereum). It integrates with MetaMask to manage identities and transactions, offering distinct roles such as buyer, seller, and admin.
+
+---
 
 ## Installation
 
-1. Install Foundry:
-```bash
-curl -L https://foundry.paradigm.xyz | bash
-foundryup
-```
+### Foundry Setup
 
-2. Clone the repository and install dependencies:
-```bash
-git clone https://github.com/jcr-security/solidity-security-teaching-resources.git
-cd solidity-security-teaching-resources
-forge install
-```
+1. Install Foundry:
+   ```bash
+   curl -L https://foundry.paradigm.xyz | bash
+   foundryup
+   ```
+
+2. Clone the repository and install smart contract dependencies:
+   ```bash
+   git clone git@github.com:mredaht/Faillapop2.0.git
+   cd contracts
+   forge install
+   ```
 
 3. Install frontend dependencies:
-```bash
-cd frontend
-npm install
-```
+   ```bash
+   cd ../frontend
+   npm install
+   ```
+
+---
 
 ## Usage
 
 ### Smart Contracts (using Foundry)
 
 1. Start a local blockchain:
-```bash
-anvil
-```
+   ```bash
+   anvil
+   ```
 
 2. In a new terminal, compile the contracts:
-```bash
-forge build
-```
+   ```bash
+   forge build
+   ```
 
 3. Run the tests:
-```bash
-forge test
-```
+   ```bash
+   forge test
+   ```
 
 4. Deploy the contracts:
-```bash
-forge script script/DeployFaillapop.s.sol --broadcast
-```
+   ```bash
+   forge script script/DeployFaillapop.s.sol --broadcast
+   ```
+
+---
 
 ### Frontend
 
 1. Start the frontend development server:
-```bash
-npm run dev
+   ```bash
+   npm run dev
+   ```
+
+2. Open in your browser:
+   ```
+   http://localhost:3000
+   ```
+
+---
+
+## Technologies Used
+
+### Frontend
+
+- **React 16.3.0**
+- **TypeScript**
+- **Custom CSS**
+- **React Router DOM** for navigation
+- **Context API** for global state management
+- **MetaMask** for Ethereum integration
+
+---
+
+## Frontend Folder Structure
+
+```
+frontend/
+├── src/
+│   ├── components/
+│   │   ├── WalletConnect.tsx
+│   │   ├── CreateItem.tsx
+│   │   ├── ItemList.tsx
+│   │   └── ItemDetails.tsx
+│   ├── context/
+│   │   └── UserContext.tsx
+│   ├── types/
+│   │   ├── User.ts
+│   │   └── ethereum.d.ts
+│   ├── styles/
+│   │   └── global.css
+│   └── App.tsx
+├── public/
+└── package.json
 ```
 
-## Repository Structure
+---
 
-This repository is organized into the following sections:
+## Main Components
 
-### 🐛 Basic Examples 🐛
+### `WalletConnect.tsx`
 
-This section contains extremely simplified contracts, almost like code snippets, that highlight individual security issues. It's an excellent starting point for your journey. Read about each of the issues, and then dive into the code to identify the bugs. You can even challenge yourself by crafting your own Proof of Concept (PoC) solutions.
+- **Purpose:** Manages MetaMask wallet connection.
+- **Key Functions:**
+  - `connectWallet`: connects the user's wallet.
+  - `getUserRole`: determines if user is a buyer, seller, or admin.
+- **Context used:** `UserContext`.
 
-### 🐣 Exercises 🐣
+---
 
-In the "Exercises" section, you'll find slightly more advanced contracts that include some structure. While the majority of the code is redacted, these exercises simulate the appearance of real smart contracts. They're designed to give you a taste of what real-world contracts might look like and set you on your bug-hunting path.
+### `CreateItem.tsx`
 
-### 💪 Faillapop Mock-Audit Environment 💪
+- **Purpose:** Allows sellers to create product listings.
+- **Features:**
+  - Form with validation.
+  - Image upload.
+  - Fields for name, description, price.
+- **Local state:** Uses hooks to handle input.
+- **Ethereum connection:** Sends transaction to register product on smart contract.
 
-Here, you'll discover a complete protocol comprising multiple contracts that interact with one another. Unlike a traditional Capture The Flag (CTF) approach, this environment mirrors a fully functional real-world protocol that is seeking *your* audit. While many vulnerabilities follow basic patterns, this environment offers you the chance to mimic the audit of a larger codebase, compared to the exercises in the previous section.
+---
 
-Some of the code snippets may draw heavily from open-source resources. If you believe you deserve credit for any of these snippets, my sincere apologies. Please reach out to me so I can properly acknowledge you by adding your name and GitHub details to the relevant section.
+### `ItemList.tsx`
 
-## Collaboration
+- **Purpose:** Displays all available products.
+- **Features:**
+  - Search by name.
+  - Filter by category or price.
+  - Responsive grid layout.
+- **Props:** receives data from backend or blockchain.
+- **Renders:** multiple `ItemCard` components.
 
-On September 2023 the [NICS lab](https://www.nics.uma.es/) research group from the [University of Malaga](https://www.uma.es/) agreed to help improving this repository as part of their efforts on Open Source collaboration. In particular, with new versions of the Faillapop mock-audit environment, both improving the initial codebase and extending its features.
+---
 
-> [!IMPORTANT]  
-> Special thanks to Marco Lopez ([TW](https://twitter.com/Marcologonz), [LD](https://linkedin.com/in/marcologonz)) who took on this workload as part of his dissertation and to NICS Lab's researcher Isaac Agudo who supported and pushed for the initiative to come to success.
+### `ItemDetails.tsx`
 
-## Contribution and Contact
+- **Purpose:** Shows detailed product information.
+- **Includes:**
+  - Image, description, price.
+  - Purchase button (if buyer).
+  - Star-based rating system.
+- **Modal:** opens modal windows for purchasing or leaving reviews.
 
-I encourage you to make the most of this material. If you find it useful, feel free to share by linking to this repository. Your feedback is invaluable! If you have suggestions, corrections, or would like to contribute in any way, please don't hesitate to reach out:
+---
 
-- Telegram: @jcr_auditor
-- Email:  jc@jcsec.io
+### `UserContext.tsx`
 
-Thank you for exploring this repository, and happy bug hunting!
+- **Purpose:** Defines global user context.
+- **Includes:**
+  - `address`: user's public Ethereum address.
+  - `role`: current user role.
+  - Methods to update user data.
 
+---
+
+## Types and Interfaces
+
+```ts
+interface User {
+  address: string;
+  role: UserRole;
+}
+
+type UserRole = 'buyer' | 'seller' | 'admin';
+
+interface Ethereum {
+  request: (args: { method: string; params?: any[] }) => Promise<any>;
+  on: (eventName: string, handler: (...args: any[]) => void) => void;
+  removeListener: (eventName: string, handler: (...args: any[]) => void) => void;
+}
+```
+
+---
+
+## Smart Contract Addresses
+
+```ts
+export const FAILLAPOP_SHOP_ADDRESS        = "0x0165878A594ca255338adfa4d48449f69242Eb8F";
+export const FAILLAPOP_TOKEN_ADDRESS       = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+export const FAILLAPOP_COOLNFT_ADDRESS     = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
+export const FAILLAPOP_POWERSELLER_ADDRESS = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
+export const FAILLAPOP_DAO_ADDRESS         = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
+export const FAILLAPOP_VAULT_ADDRESS       = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707";
+export const FAILLAPOP_PROXY_ADDRESS       = "0x0165878A594ca255338adfa4d48449f69242Eb8F";
+```
+
+---
+
+## Core Features
+
+### User Roles
+
+- **Buyer:** Can view and purchase products.
+- **Seller:** Can create, edit, and delete their own listings.
+- **Admin:** Full system management (moderation, DAO, etc.).
+
+### Key Application Features
+
+- Connect wallet via MetaMask.
+- Create and list products from smart contract.
+- Send purchase transactions.
+- Store reviews and ratings.
+- Responsive, modular interface.
+
+---
+
+## TODO
+
+- Add vulnerability documentation and audit notes.
