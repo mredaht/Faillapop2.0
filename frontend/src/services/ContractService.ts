@@ -1,177 +1,189 @@
 import { ethers } from 'ethers';
-import {
-  FAILLAPOP_SHOP_ADDRESS,
-  FAILLAPOP_SHOP_ABI,
-  FAILLAPOP_TOKEN_ADDRESS,
-  FAILLAPOP_TOKEN_ABI,
-  FAILLAPOP_VAULT_ADDRESS,
-  FAILLAPOP_VAULT_ABI
-} from '../contracts/config';
-
-type ExtendedProvider = ethers.providers.ExternalProvider & {
-  request: (args: { method: string; params?: any[] }) => Promise<any>;
-  on: (event: string, handler: (...args: any[]) => void) => void;
-  removeListener: (event: string, handler: (...args: any[]) => void) => void;
-};
+import { create } from 'ipfs-http-client';
+import { FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI, FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI } from '../contracts/config';
+import { Item } from '../types/Item';
+import { EthereumProvider } from '../types/ethereum';
 
 declare global {
   interface Window {
-    ethereum?: ExtendedProvider;
+    ethereum?: EthereumProvider & {
+      request: (args: { method: string; params?: any[] }) => Promise<any>;
+      on: (event: string, handler: (...args: any[]) => void) => void;
+      removeListener: (event: string, handler: (...args: any[]) => void) => void;
+    };
   }
 }
 
 export class ContractService {
+  private contract: ethers.Contract | null = null;
   private provider: ethers.providers.Web3Provider | null = null;
-  private signer: ethers.Signer | null = null;
-  private shopContract: ethers.Contract | null = null;
-  private tokenContract: ethers.Contract | null = null;
-  private vaultContract: ethers.Contract | null = null;
+  private ipfs: any;
+
+  constructor() {
+    // Inicializar IPFS
+    this.ipfs = create({
+      host: 'localhost',
+      port: 5001,
+      protocol: 'http',
+    });
+  }
 
   async init() {
-    if (typeof window.ethereum === 'undefined') {
-      throw new Error('Please install MetaMask to use this application');
-    }
-
-    this.provider = new ethers.providers.Web3Provider(window.ethereum);
-    await this.requestAccount();
-    this.signer = this.provider.getSigner();
-    
-    this.shopContract = new ethers.Contract(
-      FAILLAPOP_SHOP_ADDRESS,
-      FAILLAPOP_SHOP_ABI,
-      this.signer
-    );
-
-    this.tokenContract = new ethers.Contract(
-      FAILLAPOP_TOKEN_ADDRESS,
-      FAILLAPOP_TOKEN_ABI,
-      this.signer
-    );
-
-    this.vaultContract = new ethers.Contract(
-      FAILLAPOP_VAULT_ADDRESS,
-      FAILLAPOP_VAULT_ABI,
-      this.signer
-    );
-  }
-
-  async requestAccount() {
-    if (!window.ethereum) throw new Error('Please install MetaMask to use this application');
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
-  }
-
-  async getAddress() {
-    if (!this.signer) throw new Error('Signer not initialized');
-    return await this.signer.getAddress();
-  }
-
-  async stakeEth(amount: string) {
-    if (!this.vaultContract) throw new Error('Vault contract not initialized');
-    const amountInWei = ethers.utils.parseEther(amount);
-    const tx = await this.vaultContract.doStake({ value: amountInWei });
-    await tx.wait();
-  }
-
-  async getStakedBalance(address: string) {
-    if (!this.vaultContract) throw new Error('Vault contract not initialized');
-    return await this.vaultContract.userBalance(address);
-  }
-
-  async createItem(name: string, description: string, price: string) {
-    if (!this.shopContract) throw new Error('Shop contract not initialized');
-    
-    try {
-      console.log('Creating item with:', { name, description, price });
-      
-      const priceInWei = ethers.utils.parseEther(price);
-      console.log('Price in wei:', priceInWei.toString());
-      
-      // Verify contract connection first
-      console.log('Testing contract connection...');
+    if (typeof window.ethereum !== 'undefined') {
       try {
-        const currentIndex = await this.shopContract.offerIndex();
-        console.log('Current item count:', currentIndex.toString());
-      } catch (connectionError) {
-        console.error('Contract connection failed:', connectionError);
-        throw new Error('Cannot connect to shop contract. Check network connection.');
-      }
-      
-      // Create the item with timeout
-      console.log('Calling newSale...');
-      
-      // Add a timeout wrapper
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Transaction timeout after 30 seconds')), 30000);
-      });
-      
-      const transactionPromise = this.shopContract.newSale(name, description, priceInWei);
-      
-      const tx = await Promise.race([transactionPromise, timeoutPromise]);
-      console.log('Transaction sent:', tx.hash);
-      
-      const receiptPromise = tx.wait();
-      const receiptTimeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Transaction confirmation timeout after 60 seconds')), 60000);
-      });
-      
-      const receipt = await Promise.race([receiptPromise, receiptTimeoutPromise]);
-      console.log('Transaction confirmed:', receipt.transactionHash);
-      
-      return receipt;
-    } catch (error: any) {
-      console.error('Error in createItem:', error);
-      if (error.code === 'ACTION_REJECTED') {
-        throw new Error('Transaction was rejected by user');
-      } else if (error.message && error.message.includes('timeout')) {
-        throw new Error('Transaction timed out. Please try again.');
-      } else if (error.message && error.message.includes('reverted')) {
-        throw new Error('Transaction failed: ' + (error.reason || error.message));
-      }
-      throw error;
-    }
-  }
-
-  async buyItem(itemId: number) {
-    if (!this.shopContract) throw new Error('Contract not initialized');
-    const sale = await this.shopContract.offeredItems(itemId);
-    const tx = await this.shopContract.doBuy(itemId, { value: sale.price });
-    await tx.wait();
-  }
-
-  async getAllItems() {
-    if (!this.shopContract) throw new Error('Contract not initialized');
-    
-    try {
-      const itemCount = await this.shopContract.offerIndex();
-      const items = [] as any[];
-
-      for (let i = 0; i < itemCount; i++) {
-        try {
-          const sale = await this.shopContract.offeredItems(i);
-          console.log('Sale data:', sale); // Debug log
-          
-          items.push({
-            id: i,
-            name: sale.title || sale[2] || 'Unknown Item', // title is at index 2
-            description: sale.description || sale[3] || 'No description', // description at index 3
-            price: ethers.utils.formatEther(sale.price || sale[4] || '0'), // price at index 4
-            seller: sale.seller || sale[0] || '0x0', // seller at index 0
-            isSold: false // Simplify for now, will improve later
-          });
-        } catch (itemError) {
-          console.error(`Error loading item ${i}:`, itemError);
-          // Skip this item and continue
+        console.log('Initializing contract with address:', FAILLAPOP_SHOP_ADDRESS);
+        this.provider = new ethers.providers.Web3Provider(window.ethereum as EthereumProvider);
+        
+        // Verificar y cambiar a la red correcta si es necesario
+        const network = await this.provider.getNetwork();
+        console.log('Current network:', network);
+        
+        if (network.chainId !== 31337) {
+          try {
+            await window.ethereum?.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0x7A69' }], // 31337 en hexadecimal
+            });
+          } catch (switchError: any) {
+            // Si la red no existe, intentar agregarla
+            if (switchError.code === 4902) {
+              await window.ethereum?.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0x7A69',
+                  chainName: 'Localhost 8545',
+                  nativeCurrency: {
+                    name: 'ETH',
+                    symbol: 'ETH',
+                    decimals: 18
+                  },
+                  rpcUrls: ['http://localhost:8545'],
+                }],
+              });
+            } else {
+              throw switchError;
+            }
+          }
         }
+        
+        const signer = this.provider.getSigner();
+        console.log('Signer address:', await signer.getAddress());
+        
+        this.contract = new ethers.Contract(FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, signer);
+        console.log('Contract initialized:', this.contract);
+        
+        // Verificar que el contrato está desplegado
+        const code = await this.provider.getCode(FAILLAPOP_SHOP_ADDRESS);
+        if (code === '0x') {
+          throw new Error('Contract not deployed at the specified address');
+        }
+        
+        // Verificar que podemos llamar a nextItemId
+        const nextId = await this.contract.nextItemId();
+        console.log('Next item ID:', nextId.toString());
+      } catch (error) {
+        console.error('Error initializing contract:', error);
+        throw error;
       }
-
-      return items;
-    } catch (error) {
-      console.error('Error in getAllItems:', error);
-      throw new Error(`Failed to load items: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } else {
+      throw new Error('Please install MetaMask!');
     }
+  }
+
+  async getAddress(): Promise<string | null> {
+    if (!this.provider) return null;
+    const accounts = await this.provider.listAccounts();
+    return accounts[0] || null;
   }
 
   async isBlacklisted(address: string): Promise<boolean> {
+    // Por ahora, retornamos false ya que no tenemos esta función en el contrato
     return false;
+  }
+
+  async uploadToIPFS(file: File): Promise<string> {
+    try {
+      const result = await this.ipfs.add(file);
+      return result.path;
+    } catch (error) {
+      console.error('Error uploading to IPFS:', error);
+      throw new Error('Failed to upload image to IPFS');
+    }
+  }
+
+  async createItem(name: string, description: string, price: string, image?: File) {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    let imageUrl = '';
+    if (image) {
+      imageUrl = await this.uploadToIPFS(image);
+    }
+
+    const priceInWei = ethers.utils.parseEther(price);
+    const tx = await this.contract.listItem(name, description, priceInWei);
+    await tx.wait();
+  }
+
+  async getAllItems(): Promise<Item[]> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    const itemCount = await this.contract.nextItemId();
+    const items: Item[] = [];
+
+    for (let i = 0; i < itemCount; i++) {
+      const item = await this.contract.items(i);
+      items.push({
+        id: item.id.toNumber(),
+        name: item.name,
+        description: item.description,
+        price: ethers.utils.formatEther(item.price),
+        seller: item.seller,
+        isSold: item.isSold,
+        imageUrl: item.imageUrl || ''
+      });
+    }
+
+    return items;
+  }
+
+  async getSellerItems(sellerAddress: string): Promise<Item[]> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    const itemCount = await this.contract.nextItemId();
+    const items: Item[] = [];
+
+    for (let i = 0; i < itemCount; i++) {
+      const item = await this.contract.items(i);
+      if (item.seller.toLowerCase() === sellerAddress.toLowerCase()) {
+        items.push({
+          id: item.id.toNumber(),
+          name: item.name,
+          description: item.description,
+          price: ethers.utils.formatEther(item.price),
+          seller: item.seller,
+          isSold: item.isSold,
+          imageUrl: item.imageUrl || ''
+        });
+      }
+    }
+
+    return items;
+  }
+
+  async buyItem(itemId: number) {
+    if (!this.contract) throw new Error('Contract not initialized');
+    const tx = await this.contract.buyItem(itemId);
+    await tx.wait();
+  }
+
+  async isInitialized(): Promise<boolean> {
+    try {
+      if (!this.contract) return false;
+      await this.contract.nextItemId();
+      return true;
+    } catch (error) {
+      console.error('Error checking contract initialization:', error);
+      return false;
+    }
   }
 } 

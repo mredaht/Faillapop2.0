@@ -1,14 +1,14 @@
-import { MetaMaskInpageProvider } from "@metamask/providers";
+import { ExternalProvider } from '@ethersproject/providers';
 
-interface Ethereum {
+export type EthereumProvider = ExternalProvider & {
   request: (args: { method: string; params?: any[] }) => Promise<any>;
-  on: (eventName: string, handler: (...args: any[]) => void) => void;
-  removeListener: (eventName: string, handler: (...args: any[]) => void) => void;
-}
+  on: (event: string, handler: (...args: any[]) => void) => void;
+  removeListener: (event: string, handler: (...args: any[]) => void) => void;
+};
 
 declare global {
   interface Window {
-    ethereum?: MetaMaskInpageProvider;
+    ethereum?: EthereumProvider;
   }
 }
 

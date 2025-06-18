@@ -5,6 +5,7 @@ export interface Item {
   price: string;
   seller: string;
   isSold: boolean;
+  imageUrl?: string;
 }
 
 export interface Dispute {

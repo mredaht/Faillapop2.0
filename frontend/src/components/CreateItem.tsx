@@ -2,16 +2,28 @@ import React, { useState } from 'react';
 import '../styles/CreateItem.css';
 
 interface CreateItemProps {
-  onCreate: (name: string, description: string, price: string) => Promise<void>;
+  onCreate: (name: string, description: string, price: string, image?: File) => Promise<void>;
 }
 
 const CreateItem: React.FC<CreateItemProps> = ({ onCreate }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [image, setImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImage(file);
+      // Crear URL de preview
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,12 +37,14 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate }) => {
     setSuccessMessage(null);
 
     try {
-      await onCreate(name, description, price);
+      await onCreate(name, description, price, image || undefined);
       setSuccessMessage('Item created successfully! 🎉');
       // Reset form
       setName('');
       setDescription('');
       setPrice('');
+      setImage(null);
+      setPreviewUrl(null);
     } catch (err: any) {
       console.error('Error creating item:', err);
       setError(err.message || 'Failed to create item');
@@ -85,6 +99,22 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate }) => {
             min="0"
             disabled={isLoading}
           />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="image">Image:</label>
+          <input
+            type="file"
+            id="image"
+            accept="image/*"
+            onChange={handleImageChange}
+            disabled={isLoading}
+          />
+          {previewUrl && (
+            <div className="image-preview">
+              <img src={previewUrl} alt="Preview" />
+            </div>
+          )}
         </div>
 
         {error && <div className="error-message">❌ {error}</div>}

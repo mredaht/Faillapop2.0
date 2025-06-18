@@ -1,11 +1,23 @@
 import { ethers } from 'ethers';
-import { MetaMaskInpageProvider } from '@metamask/providers';
+import { EthereumProvider } from '../types/ethereum';
+import { ExternalProvider } from '@ethersproject/providers';
 
 declare global {
   interface Window {
-    ethereum?: MetaMaskInpageProvider;
+    ethereum?: ExternalProvider & {
+      request: (args: { method: string; params?: any[] }) => Promise<any>;
+      on: (event: string, handler: (...args: any[]) => void) => void;
+      removeListener: (event: string, handler: (...args: any[]) => void) => void;
+    };
   }
 }
+
+export const getEthereum = (): EthereumProvider | undefined => {
+  if (typeof window !== 'undefined' && window.ethereum) {
+    return window.ethereum as EthereumProvider;
+  }
+  return undefined;
+};
 
 export const connectWallet = async () => {
   if (typeof window.ethereum === 'undefined') {

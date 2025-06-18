@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import WalletConnect from './components/WalletConnect';
 import { ItemList } from './components/ItemList';
 import CreateItem from './components/CreateItem';
+import { SellerProfile } from './components/SellerProfile';
 import { Item } from './types/Item';
 import { ContractService } from './services/ContractService';
 import './styles/global.css';
@@ -29,6 +30,8 @@ function App() {
       } catch (err) {
         console.error('Error initializing:', err);
         setError(err instanceof Error ? err.message : 'Error initializing');
+      } finally {
+        setIsLoading(false);
       }
     };
     init();
@@ -48,7 +51,7 @@ function App() {
     }
   };
 
-  const handleCreateItem = async (name: string, description: string, price: string) => {
+  const handleCreateItem = async (name: string, description: string, price: string, image?: File) => {
     if (isBlacklisted) {
       setError('You are blacklisted and cannot create items');
       return;
@@ -56,7 +59,7 @@ function App() {
 
     try {
       setError(null);
-      await contractService.createItem(name, description, price);
+      await contractService.createItem(name, description, price, image);
       await loadItems();
     } catch (err) {
       console.error('Error creating item:', err);
@@ -106,6 +109,13 @@ function App() {
                 </div>
               ) : (
                 <CreateItem onCreate={handleCreateItem} />
+              )}
+              
+              {userAddress && (
+                <SellerProfile 
+                  userAddress={userAddress} 
+                  contractService={contractService} 
+                />
               )}
               
               {isLoading ? (
