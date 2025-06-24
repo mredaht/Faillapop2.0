@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
+import { ContractService } from '../services/ContractService';
 import '../styles/CreateItem.css';
 
 interface CreateItemProps {
   onCreate: (name: string, description: string, price: string, image?: File) => Promise<void>;
+  contractService: ContractService;
+  userAddress: string | null;
 }
 
-const CreateItem: React.FC<CreateItemProps> = ({ onCreate }) => {
+const CreateItem: React.FC<CreateItemProps> = ({ onCreate, contractService, userAddress }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -14,6 +17,30 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate }) => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [vaultInfo, setVaultInfo] = useState<{ balance: string; locked: string; available: string } | null>(null);
+
+  // Load vault info when component mounts
+  React.useEffect(() => {
+    if (userAddress) {
+      loadVaultInfo();
+    }
+  }, [userAddress]);
+
+  const loadVaultInfo = async () => {
+    if (!userAddress) return;
+    
+    try {
+      const [balance, locked] = await Promise.all([
+        contractService.getUserBalance(userAddress),
+        contractService.getUserLockedBalance(userAddress)
+      ]);
+      
+      const available = (parseFloat(balance) - parseFloat(locked)).toFixed(4);
+      setVaultInfo({ balance, locked, available });
+    } catch (err) {
+      console.error('Error loading vault info:', err);
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,6 +59,17 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate }) => {
       return;
     }
 
+    if (!userAddress) {
+      setError('Please connect your wallet');
+      return;
+    }
+
+    // Check if user has enough staked funds
+    if (vaultInfo && parseFloat(vaultInfo.available) < parseFloat(price)) {
+      setError(`Insufficient staked funds. You need at least ${price} ETH staked. Current available: ${vaultInfo.available} ETH`);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
@@ -45,6 +83,8 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate }) => {
       setPrice('');
       setImage(null);
       setPreviewUrl(null);
+      // Reload vault info
+      await loadVaultInfo();
     } catch (err: any) {
       console.error('Error creating item:', err);
       setError(err.message || 'Failed to create item');
@@ -57,9 +97,33 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate }) => {
     <div className="create-item-container">
       <h2>Create New Item</h2>
       
+      {/* Vault info */}
+      {vaultInfo && (
+        <div className="vault-status">
+          <h3>Your Vault Status</h3>
+          <div className="vault-stats-mini">
+            <div className="vault-stat">
+              <span className="label">Total Staked:</span>
+              <span className="value">{vaultInfo.balance} ETH</span>
+            </div>
+            <div className="vault-stat">
+              <span className="label">Locked:</span>
+              <span className="value">{vaultInfo.locked} ETH</span>
+            </div>
+            <div className="vault-stat">
+              <span className="label">Available:</span>
+              <span className="value">{vaultInfo.available} ETH</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Info about staking */}
       <div className="staking-info">
-        <p>ℹ️ <strong>Note:</strong> To sell items, you need to stake ETH. The system will automatically stake the required amount if needed.</p>
+        <p>ℹ️ <strong>Note:</strong> To sell items, you need to have enough ETH staked in the vault. The required amount will be automatically locked when you create an item.</p>
+        {vaultInfo && parseFloat(vaultInfo.available) < parseFloat(price || '0') && (
+          <p className="warning">⚠️ <strong>Warning:</strong> You don't have enough staked funds. Please stake more ETH in the Vault tab.</p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="create-item-form">

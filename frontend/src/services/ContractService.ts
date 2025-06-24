@@ -16,7 +16,8 @@ declare global {
 
 export class ContractService {
   private contract: ethers.Contract | null = null;
-  private provider: ethers.providers.Web3Provider | null = null;
+  private vaultContract: ethers.Contract | null = null;
+  private provider: ethers.providers.Provider | null = null;
   private ipfs: any;
 
   constructor() {
@@ -29,15 +30,13 @@ export class ContractService {
   }
 
   async init() {
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        console.log('Initializing contract with address:', FAILLAPOP_SHOP_ADDRESS);
+    try {
+      if (typeof window.ethereum !== 'undefined') {
+        console.log('Initializing with Ethereum provider');
         this.provider = new ethers.providers.Web3Provider(window.ethereum as EthereumProvider);
-        
-        // Verificar y cambiar a la red correcta si es necesario
+
         const network = await this.provider.getNetwork();
         console.log('Current network:', network);
-        
         if (network.chainId !== 31337) {
           try {
             await window.ethereum?.request({
@@ -45,18 +44,13 @@ export class ContractService {
               params: [{ chainId: '0x7A69' }], // 31337 en hexadecimal
             });
           } catch (switchError: any) {
-            // Si la red no existe, intentar agregarla
             if (switchError.code === 4902) {
               await window.ethereum?.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
                   chainId: '0x7A69',
                   chainName: 'Localhost 8545',
-                  nativeCurrency: {
-                    name: 'ETH',
-                    symbol: 'ETH',
-                    decimals: 18
-                  },
+                  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
                   rpcUrls: ['http://localhost:8545'],
                 }],
               });
@@ -66,32 +60,34 @@ export class ContractService {
           }
         }
         
-        const signer = this.provider.getSigner();
-        console.log('Signer address:', await signer.getAddress());
-        
-        this.contract = new ethers.Contract(FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, signer);
-        console.log('Contract initialized:', this.contract);
-        
-        // Verificar que el contrato está desplegado
-        const code = await this.provider.getCode(FAILLAPOP_SHOP_ADDRESS);
-        if (code === '0x') {
-          throw new Error('Contract not deployed at the specified address');
-        }
-        
-        // Verificar que podemos llamar a nextItemId
-        const nextId = await this.contract.nextItemId();
-        console.log('Next item ID:', nextId.toString());
-      } catch (error) {
-        console.error('Error initializing contract:', error);
-        throw error;
+        this.contract = new ethers.Contract(FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, this.provider);
+        this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
+      } else {
+        console.log('No Ethereum provider found, using read-only provider');
+        this.provider = new ethers.providers.JsonRpcProvider('http://localhost:8545');
+        this.contract = new ethers.Contract(FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, this.provider);
+        this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
       }
-    } else {
-      throw new Error('Please install MetaMask!');
+
+      console.log('Verifying contract deployment...');
+      const code = await this.provider.getCode(FAILLAPOP_SHOP_ADDRESS);
+      if (code === '0x') {
+        throw new Error('Contract not deployed at the specified address');
+      }
+      
+      if (!this.contract) {
+        throw new Error('Contract not initialized');
+      }
+      const nextId = await this.contract.nextItemId();
+      console.log('Contract initialized successfully. Next item ID:', nextId.toString());
+    } catch (error) {
+      console.error('Error initializing contract:', error);
+      throw error;
     }
   }
 
   async getAddress(): Promise<string | null> {
-    if (!this.provider) return null;
+    if (!this.provider || !(this.provider instanceof ethers.providers.Web3Provider)) return null;
     const accounts = await this.provider.listAccounts();
     return accounts[0] || null;
   }
@@ -99,6 +95,81 @@ export class ContractService {
   async isBlacklisted(address: string): Promise<boolean> {
     // Por ahora, retornamos false ya que no tenemos esta función en el contrato
     return false;
+  }
+
+  // Vault functions
+  async getUserBalance(address: string): Promise<string> {
+    if (!this.vaultContract) throw new Error('Vault contract not initialized');
+    const balance = await this.vaultContract.userBalance(address);
+    return ethers.utils.formatEther(balance);
+  }
+
+  async getUserLockedBalance(address: string): Promise<string> {
+    if (!this.vaultContract) throw new Error('Vault contract not initialized');
+    const lockedBalance = await this.vaultContract.userLockedBalance(address);
+    return ethers.utils.formatEther(lockedBalance);
+  }
+
+  async getVaultBalance(): Promise<string> {
+    if (!this.vaultContract) throw new Error('Vault contract not initialized');
+    const balance = await this.vaultContract.vaultBalance();
+    return ethers.utils.formatEther(balance);
+  }
+
+  async getMaxClaimableAmount(): Promise<string> {
+    if (!this.vaultContract) throw new Error('Vault contract not initialized');
+    const amount = await this.vaultContract.maxClaimableAmount();
+    return ethers.utils.formatEther(amount);
+  }
+
+  async getRewardsClaimed(address: string): Promise<string> {
+    if (!this.vaultContract) throw new Error('Vault contract not initialized');
+    const claimed = await this.vaultContract.rewardsClaimed(address);
+    return ethers.utils.formatEther(claimed);
+  }
+
+  async getTotalSlashed(): Promise<string> {
+    if (!this.vaultContract) throw new Error('Vault contract not initialized');
+    const slashed = await this.vaultContract.totalSlashed();
+    return ethers.utils.formatEther(slashed);
+  }
+
+  async stake(amount: string): Promise<void> {
+    if (!this.vaultContract || !this.provider) throw new Error('Vault contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const vaultWithSigner = this.vaultContract.connect(signer);
+    
+    const amountInWei = ethers.utils.parseEther(amount);
+    const tx = await vaultWithSigner.doStake({ value: amountInWei });
+    await tx.wait();
+  }
+
+  async unstake(amount: string): Promise<void> {
+    if (!this.vaultContract || !this.provider) throw new Error('Vault contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const vaultWithSigner = this.vaultContract.connect(signer);
+    
+    const amountInWei = ethers.utils.parseEther(amount);
+    const tx = await vaultWithSigner.doUnstake(amountInWei);
+    await tx.wait();
+  }
+
+  async claimRewards(): Promise<void> {
+    if (!this.vaultContract || !this.provider) throw new Error('Vault contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const vaultWithSigner = this.vaultContract.connect(signer);
+    
+    const tx = await vaultWithSigner.claimRewards();
+    await tx.wait();
   }
 
   async uploadToIPFS(file: File): Promise<string> {
@@ -112,7 +183,12 @@ export class ContractService {
   }
 
   async createItem(name: string, description: string, price: string, image?: File) {
-    if (!this.contract) throw new Error('Contract not initialized');
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
     
     let imageUrl = '';
     if (image) {
@@ -120,7 +196,7 @@ export class ContractService {
     }
 
     const priceInWei = ethers.utils.parseEther(price);
-    const tx = await this.contract.listItem(name, description, priceInWei);
+    const tx = await contractWithSigner.listItem(name, description, priceInWei);
     await tx.wait();
   }
 
@@ -171,8 +247,17 @@ export class ContractService {
   }
 
   async buyItem(itemId: number) {
-    if (!this.contract) throw new Error('Contract not initialized');
-    const tx = await this.contract.buyItem(itemId);
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const item = await this.contract.items(itemId);
+    const price = item.price;
+    
+    const tx = await contractWithSigner.buyItem(itemId, { value: price });
     await tx.wait();
   }
 

@@ -8,17 +8,22 @@
 }
 
 .staking-info {
-  background: #e3f2fd;
-  padding: 12px;
-  border-radius: 6px;
-  margin-bottom: 20px;
-  border-left: 4px solid #2196f3;
+  background-color: rgba(155, 89, 182, 0.1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
 }
 
 .staking-info p {
-  margin: 0;
-  font-size: 14px;
-  color: #1565c0;
+  color: var(--text-secondary);
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.staking-info .warning {
+  color: var(--danger);
+  font-weight: 500;
 }
 
 .create-item-form {
@@ -92,4 +97,58 @@
   color: #333;
   margin-bottom: 20px;
   text-align: center;
+}
+
+/* Vault Status Styles */
+.vault-status {
+  background-color: rgba(52, 152, 219, 0.1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.vault-status h3 {
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.vault-stats-mini {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+
+.vault-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.vault-stat .label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.vault-stat .value {
+  color: var(--text);
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .vault-stats-mini {
+    grid-template-columns: 1fr;
+  }
+  
+  .vault-stat {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
 } 

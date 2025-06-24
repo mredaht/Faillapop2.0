@@ -3,6 +3,7 @@ import WalletConnect from './components/WalletConnect';
 import { ItemList } from './components/ItemList';
 import CreateItem from './components/CreateItem';
 import { SellerProfile } from './components/SellerProfile';
+import VaultManager from './components/VaultManager';
 import { Item } from './types/Item';
 import { ContractService } from './services/ContractService';
 import './styles/global.css';
@@ -15,6 +16,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [isBlacklisted, setIsBlacklisted] = useState(false);
+  const [activeTab, setActiveTab] = useState<'marketplace' | 'vault'>('marketplace');
 
   useEffect(() => {
     const init = async () => {
@@ -103,29 +105,59 @@ function App() {
             </div>
           ) : (
             <>
-              {isBlacklisted ? (
-                <div className="blacklist-warning">
-                  Your address has been blacklisted. You cannot create new items.
-                </div>
+              {/* Tab Navigation */}
+              <div className="tab-navigation">
+                <button 
+                  className={`tab-button ${activeTab === 'marketplace' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('marketplace')}
+                >
+                  Marketplace
+                </button>
+                <button 
+                  className={`tab-button ${activeTab === 'vault' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('vault')}
+                >
+                  Vault
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              {activeTab === 'marketplace' ? (
+                <>
+                  {isBlacklisted ? (
+                    <div className="blacklist-warning">
+                      Your address has been blacklisted. You cannot create new items.
+                    </div>
+                  ) : (
+                    <CreateItem 
+                      onCreate={handleCreateItem}
+                      contractService={contractService}
+                      userAddress={userAddress}
+                    />
+                  )}
+                  
+                  {userAddress && (
+                    <SellerProfile 
+                      userAddress={userAddress} 
+                      contractService={contractService} 
+                    />
+                  )}
+                  
+                  {isLoading ? (
+                    <div className="loading">
+                      Loading items...
+                    </div>
+                  ) : (
+                    <ItemList 
+                      items={items} 
+                      onBuyItem={handleBuyItem}
+                      userAddress={userAddress}
+                    />
+                  )}
+                </>
               ) : (
-                <CreateItem onCreate={handleCreateItem} />
-              )}
-              
-              {userAddress && (
-                <SellerProfile 
-                  userAddress={userAddress} 
-                  contractService={contractService} 
-                />
-              )}
-              
-              {isLoading ? (
-                <div className="loading">
-                  Loading items...
-                </div>
-              ) : (
-                <ItemList 
-                  items={items} 
-                  onBuyItem={handleBuyItem}
+                <VaultManager 
+                  contractService={contractService}
                   userAddress={userAddress}
                 />
               )}
