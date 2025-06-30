@@ -17,6 +17,11 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
   const [disputeReply, setDisputeReply] = useState<{[key: number]: string}>({});
   const [isVacationMode, setIsVacationMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', description: '', price: '' });
+  const [validSales, setValidSales] = useState(0);
+  const [canClaimBadge, setCanClaimBadge] = useState(false);
+  const [weeksElapsed, setWeeksElapsed] = useState(0);
 
   useEffect(() => {
     const checkContract = async () => {
@@ -49,6 +54,12 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
         .filter(item => ItemStateHelpers.isSold(item.state))
         .reduce((acc, item) => acc + Number(item.price), 0);
       setTotalSales(sales.toFixed(4));
+
+      // Cargar estadísticas de Powerseller
+      const badgeInfo = await contractService.canClaimPowersellerBadge(userAddress);
+      setValidSales(badgeInfo.validSales);
+      setCanClaimBadge(badgeInfo.canClaim);
+      setWeeksElapsed(badgeInfo.weeksElapsed);
     } catch (error) {
       console.error('Error loading seller data:', error);
     } finally {
@@ -103,6 +114,65 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
     setDisputeReply(prev => ({ ...prev, [itemId]: reply }));
   };
 
+  const startEditing = (item: Item) => {
+    setEditingItem(item.id);
+    setEditForm({
+      title: item.name,
+      description: item.description,
+      price: item.price
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingItem(null);
+    setEditForm({ title: '', description: '', price: '' });
+  };
+
+  const handleEditItem = async (itemId: number) => {
+    try {
+      setActionLoading(itemId);
+      setError(null);
+      await contractService.modifyItem(itemId, editForm.title, editForm.description, editForm.price);
+      await loadSellerData();
+      cancelEditing();
+    } catch (error) {
+      console.error('Error editing item:', error);
+      setError('Error editing item');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancelItem = async (itemId: number) => {
+    if (!confirm('Are you sure you want to cancel this item? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setActionLoading(itemId);
+      setError(null);
+      await contractService.cancelItem(itemId);
+      await loadSellerData();
+    } catch (error) {
+      console.error('Error canceling item:', error);
+      setError('Error canceling item');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleClaimPowersellerBadge = async () => {
+    try {
+      setError(null);
+      await contractService.claimPowersellerBadge();
+      alert('🏆 Powerseller badge claimed successfully!');
+      await loadSellerData();
+    } catch (error) {
+      console.error('Error claiming Powerseller badge:', error);
+      setError('Error claiming Powerseller badge. Make sure you meet the requirements.');
+    }
+  };
+
   if (!isContractReady) {
     return <div className="loading">Waiting for contract initialization...</div>;
   }
@@ -138,6 +208,35 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
             <h3>Active Listings</h3>
             <p>{sellerItems.filter(item => ItemStateHelpers.isAvailableForPurchase(item.state)).length}</p>
           </div>
+          <div className="stat-card">
+            <h3>Valid Sales</h3>
+            <p>{validSales}/10</p>
+            <small>{validSales >= 10 ? '✅ Eligible!' : `${10 - validSales} more needed`}</small>
+          </div>
+        </div>
+        
+        {/* Powerseller Badge Section */}
+        <div className="powerseller-section">
+          <h3>🏆 Powerseller Badge</h3>
+          <div className="badge-info">
+            <p>Requirements: 10+ valid sales & 5+ weeks since first sale</p>
+            <div className="badge-status">
+              <span>Sales: {validSales}/10 {validSales >= 10 ? '✅' : '❌'}</span>
+              <span>Time: {weeksElapsed}/5 weeks {weeksElapsed >= 5 ? '✅' : '❌'}</span>
+            </div>
+            {canClaimBadge ? (
+              <button 
+                onClick={handleClaimPowersellerBadge}
+                className="button success powerseller-claim"
+              >
+                🏆 Claim Powerseller Badge!
+              </button>
+            ) : (
+              <p className="badge-unavailable">
+                {validSales < 10 ? `Need ${10 - validSales} more valid sales` : `Need ${Math.ceil(5 - weeksElapsed)} more weeks`}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -146,14 +245,78 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
         <div className="items-grid">
           {sellerItems.map(item => (
             <div key={item.id} className="item-card">
-              <h4>{item.name}</h4>
-              <p>{item.description}</p>
-              <p className="price">{item.price} ETH</p>
-              <div className="status-badge" style={{ backgroundColor: ItemStateHelpers.getStateColor(item.state) }}>
-                {ItemStateHelpers.getStateLabel(item.state)}
-              </div>
-              {item.buyer && (
-                <p className="buyer">Buyer: {item.buyer.slice(0, 6)}...{item.buyer.slice(-4)}</p>
+              {editingItem === item.id ? (
+                // Formulario de edición
+                <div className="edit-form">
+                  <input
+                    type="text"
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                    placeholder="Title"
+                    className="edit-input"
+                  />
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                    placeholder="Description"
+                    className="edit-textarea"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.price}
+                    onChange={(e) => setEditForm({...editForm, price: e.target.value})}
+                    placeholder="Price in ETH"
+                    className="edit-input"
+                  />
+                  <div className="edit-actions">
+                    <button
+                      onClick={() => handleEditItem(item.id)}
+                      disabled={actionLoading === item.id}
+                      className="button success"
+                    >
+                      {actionLoading === item.id ? 'Saving...' : '💾 Save'}
+                    </button>
+                    <button
+                      onClick={cancelEditing}
+                      className="button secondary"
+                    >
+                      ❌ Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // Vista normal del item
+                <>
+                  <h4>{item.name}</h4>
+                  <p>{item.description}</p>
+                  <p className="price">{item.price} ETH</p>
+                  <div className="status-badge" style={{ backgroundColor: ItemStateHelpers.getStateColor(item.state) }}>
+                    {ItemStateHelpers.getStateLabel(item.state)}
+                  </div>
+                  {item.buyer && (
+                    <p className="buyer">Buyer: {item.buyer.slice(0, 6)}...{item.buyer.slice(-4)}</p>
+                  )}
+                  
+                  {/* Botones de gestión de item */}
+                  {ItemStateHelpers.isAvailableForPurchase(item.state) && (
+                    <div className="item-management">
+                      <button
+                        onClick={() => startEditing(item)}
+                        className="button edit-btn"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => handleCancelItem(item.id)}
+                        disabled={actionLoading === item.id}
+                        className="button danger cancel-btn"
+                      >
+                        {actionLoading === item.id ? 'Canceling...' : '🗑️ Cancel'}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
               
               {/* Acciones del vendedor */}

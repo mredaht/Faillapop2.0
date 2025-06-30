@@ -1365,4 +1365,132 @@ body {
   border: 1px solid #90caf9;
   font-style: italic;
   text-align: center;
+}
+
+/* Powerseller Badge Section */
+.powerseller-section {
+  background-color: #fff3e0;
+  border: 2px solid #ff9800;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.powerseller-section h3 {
+  margin-bottom: 1rem;
+  color: #e65100;
+}
+
+.badge-info p {
+  color: #bf360c;
+  margin-bottom: 0.5rem;
+}
+
+.badge-status {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.badge-status span {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  font-size: 0.9rem;
+}
+
+.powerseller-claim {
+  font-size: 1.1rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(45deg, #ff9800, #ffc107);
+  color: white;
+  border: none;
+  font-weight: bold;
+}
+
+.badge-unavailable {
+  color: #666;
+  font-style: italic;
+}
+
+/* Item Management */
+.item-management {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.edit-btn {
+  background-color: #2196f3;
+  color: white;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+}
+
+.edit-btn:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+.cancel-btn {
+  background-color: #f44336;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+}
+
+/* Edit Form */
+.edit-form {
+  padding: 1rem;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.edit-input, .edit-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.edit-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.button.secondary {
+  background-color: #757575;
+  color: white;
+}
+
+.button.secondary:hover:not(:disabled) {
+  background-color: #616161;
+}
+
+@media (max-width: 768px) {
+  .powerseller-section {
+    padding: 1rem;
+  }
+  
+  .badge-status {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .item-management {
+    flex-direction: column;
+  }
+  
+  .edit-actions {
+    flex-direction: column;
+  }
 } 

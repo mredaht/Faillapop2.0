@@ -449,4 +449,75 @@ export class ContractService {
       return null;
     }
   }
+
+  // ======= NUEVAS FUNCIONES FALTANTES =======
+
+  async modifyItem(itemId: number, newTitle: string, newDescription: string, newPrice: string): Promise<void> {
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const priceInWei = ethers.utils.parseEther(newPrice);
+    const tx = await contractWithSigner.modifySale(itemId, newTitle, newDescription, priceInWei);
+    await tx.wait();
+  }
+
+  async cancelItem(itemId: number): Promise<void> {
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const tx = await contractWithSigner.cancelActiveSale(itemId);
+    await tx.wait();
+  }
+
+  async claimPowersellerBadge(): Promise<void> {
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const tx = await contractWithSigner.claimPowersellerBadge();
+    await tx.wait();
+  }
+
+  async getValidSalesCount(sellerAddress: string): Promise<number> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    const count = await this.contract.queryNumValidSales(sellerAddress);
+    return count.toNumber();
+  }
+
+  async getFirstValidSaleTimestamp(sellerAddress: string): Promise<number> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    const timestamp = await this.contract.firstValidSaleTimestamp(sellerAddress);
+    return timestamp.toNumber();
+  }
+
+  async canClaimPowersellerBadge(sellerAddress: string): Promise<{ canClaim: boolean, validSales: number, weeksElapsed: number }> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    const validSales = await this.getValidSalesCount(sellerAddress);
+    const firstSaleTimestamp = await this.getFirstValidSaleTimestamp(sellerAddress);
+    
+    const now = Math.floor(Date.now() / 1000);
+    const weeksElapsed = firstSaleTimestamp > 0 ? (now - firstSaleTimestamp) / (7 * 24 * 60 * 60) : 0;
+    
+    const canClaim = validSales >= 10 && weeksElapsed >= 5;
+    
+    return {
+      canClaim,
+      validSales,
+      weeksElapsed: Math.floor(weeksElapsed)
+    };
+  }
 } 
