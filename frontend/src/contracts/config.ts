@@ -1,5 +1,5 @@
 // Import ABIs from local files
-import FP_Shop from './abis/FP_Shop_correct.json';
+import FP_Shop from './abis/FP_Shop_complete.json';
 import FP_Token from './abis/FP_Token.json';
 import FP_CoolNFT from './abis/FP_CoolNFT.json';
 import FP_PowersellerNFT from './abis/FP_PowersellerNFT.json';

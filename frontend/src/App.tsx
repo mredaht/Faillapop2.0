@@ -4,6 +4,8 @@ import { ItemList } from './components/ItemList';
 import CreateItem from './components/CreateItem';
 import { SellerProfile } from './components/SellerProfile';
 import VaultManager from './components/VaultManager';
+import { ItemDetails } from './components/ItemDetails';
+import { BuyerDashboard } from './components/BuyerDashboard';
 import { Item } from './types/Item';
 import { ContractService } from './services/ContractService';
 import './styles/global.css';
@@ -16,7 +18,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [isBlacklisted, setIsBlacklisted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'marketplace' | 'vault'>('marketplace');
+  const [activeTab, setActiveTab] = useState<'marketplace' | 'purchases' | 'vault'>('marketplace');
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -80,6 +83,32 @@ function App() {
     }
   };
 
+  const handleDispute = async (item: Item, reason: string) => {
+    try {
+      setError(null);
+      await contractService.disputeSale(item.id, reason);
+      await loadItems();
+    } catch (err) {
+      console.error('Error disputing item:', err);
+      setError(err instanceof Error ? err.message : 'Error disputing item');
+    }
+  };
+
+  const handleConfirmReceipt = async (item: Item) => {
+    try {
+      setError(null);
+      await contractService.itemReceived(item.id);
+      await loadItems();
+    } catch (err) {
+      console.error('Error confirming receipt:', err);
+      setError(err instanceof Error ? err.message : 'Error confirming receipt');
+    }
+  };
+
+  const handleItemClick = async (item: Item) => {
+    setSelectedItem(item);
+  };
+
   return (
     <div>
       <header className="header">
@@ -111,13 +140,19 @@ function App() {
                   className={`tab-button ${activeTab === 'marketplace' ? 'active' : ''}`}
                   onClick={() => setActiveTab('marketplace')}
                 >
-                  Marketplace
+                  🛒 Marketplace
+                </button>
+                <button 
+                  className={`tab-button ${activeTab === 'purchases' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('purchases')}
+                >
+                  📦 My Purchases
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 'vault' ? 'active' : ''}`}
                   onClick={() => setActiveTab('vault')}
                 >
-                  Vault
+                  💰 Vault
                 </button>
               </div>
 
@@ -148,13 +183,32 @@ function App() {
                       Loading items...
                     </div>
                   ) : (
-                    <ItemList 
-                      items={items} 
-                      onBuyItem={handleBuyItem}
-                      userAddress={userAddress}
-                    />
+                    <>
+                      <ItemList 
+                        items={items} 
+                        onBuyItem={handleItemClick}
+                        userAddress={userAddress}
+                      />
+                      
+                      {selectedItem && (
+                        <ItemDetails
+                          item={selectedItem}
+                          onClose={() => setSelectedItem(null)}
+                          onBuy={handleBuyItem}
+                          onDispute={handleDispute}
+                          onConfirmReceipt={handleConfirmReceipt}
+                          userAddress={userAddress}
+                          isOpen={true}
+                        />
+                      )}
+                    </>
                   )}
                 </>
+              ) : activeTab === 'purchases' ? (
+                <BuyerDashboard 
+                  contractService={contractService}
+                  userAddress={userAddress}
+                />
               ) : (
                 <VaultManager 
                   contractService={contractService}

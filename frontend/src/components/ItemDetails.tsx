@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Item, ItemState } from '../types/Item';
+import { Item, ItemState, ItemStateHelpers } from '../types/Item';
 import { ethers } from 'ethers';
 
 interface ItemDetailsProps {
@@ -73,10 +73,18 @@ export const ItemDetails: React.FC<ItemDetailsProps> = ({
     }
   };
 
-  // Simplified state checks based on isSold
-  const canBuy = !item.isSold && userAddress && userAddress.toLowerCase() !== item.seller.toLowerCase();
-  const canDispute = false; // Disabled for now as we don't have dispute state
-  const canConfirmReceipt = false; // Disabled for now as we don't have receipt confirmation state
+  // Enhanced state checks using the new state system
+  const canBuy = ItemStateHelpers.isAvailableForPurchase(item.state) && 
+                 userAddress && 
+                 userAddress.toLowerCase() !== item.seller.toLowerCase();
+  
+  const canDispute = ItemStateHelpers.canDispute(item.state) && 
+                     userAddress && 
+                     userAddress.toLowerCase() === item.buyer?.toLowerCase();
+  
+  const canConfirmReceipt = ItemStateHelpers.canConfirmReceipt(item.state) && 
+                           userAddress && 
+                           userAddress.toLowerCase() === item.buyer?.toLowerCase(); // Disabled for now as we don't have receipt confirmation state
 
   return (
     <div className="modal-overlay">
@@ -89,7 +97,17 @@ export const ItemDetails: React.FC<ItemDetailsProps> = ({
         <div className="details">
           <p><strong>Price:</strong> {item.price} ETH</p>
           <p><strong>Seller:</strong> {`${item.seller.slice(0, 6)}...${item.seller.slice(-4)}`}</p>
-          <p><strong>Status:</strong> {item.isSold ? 'Sold' : 'Available'}</p>
+          {item.buyer && (
+            <p><strong>Buyer:</strong> {`${item.buyer.slice(0, 6)}...${item.buyer.slice(-4)}`}</p>
+          )}
+          <p><strong>Status:</strong> 
+            <span style={{ color: ItemStateHelpers.getStateColor(item.state), marginLeft: '8px' }}>
+              {ItemStateHelpers.getStateLabel(item.state)}
+            </span>
+          </p>
+          {item.buyTimestamp && (
+            <p><strong>Purchase Date:</strong> {new Date(item.buyTimestamp * 1000).toLocaleDateString()}</p>
+          )}
         </div>
 
         {canBuy && (

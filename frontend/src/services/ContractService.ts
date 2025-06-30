@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { create } from 'ipfs-http-client';
 import { FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI, FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI, FAILLAPOP_PROXY_ADDRESS } from '../contracts/config';
-import { Item } from '../types/Item';
+import { Item, ItemState, Dispute, Sale } from '../types/Item';
 import { EthereumProvider } from '../types/ethereum';
 
 declare global {
@@ -242,13 +242,23 @@ export class ContractService {
 
     for (let i = 0; i < itemCount; i++) {
       const item = await this.contract.offeredItems(i);
+      const state = item.state as ItemState;
+      
+      // Filtrar items que están en estado Undefined (eliminados)
+      if (state === ItemState.Undefined) {
+        continue;
+      }
+      
       items.push({
         id: i,
         name: item.title,
         description: item.description,
         price: ethers.utils.formatEther(item.price),
         seller: item.seller,
-        isSold: item.state === 4, // State.Sold = 4
+        buyer: item.buyer === ethers.constants.AddressZero ? undefined : item.buyer,
+        state: state,
+        buyTimestamp: item.buyTimestamp ? item.buyTimestamp.toNumber() : undefined,
+        isSold: state === ItemState.Sold, // Backward compatibility
         imageUrl: '' // No hay campo de imagen en este contrato
       });
     }
@@ -264,17 +274,27 @@ export class ContractService {
 
     for (let i = 0; i < itemCount; i++) {
       const item = await this.contract.offeredItems(i);
-              if (item.seller.toLowerCase() === sellerAddress.toLowerCase()) {
-          items.push({
-            id: i,
-            name: item.title,
-            description: item.description,
-            price: ethers.utils.formatEther(item.price),
-            seller: item.seller,
-            isSold: item.state === 4, // State.Sold = 4
-            imageUrl: '' // No hay campo de imagen en este contrato
-          });
-        }
+      
+      // Filtrar items que están en estado Undefined (eliminados)
+      const state = item.state as ItemState;
+      if (state === ItemState.Undefined) {
+        continue;
+      }
+      
+      if (item.seller.toLowerCase() === sellerAddress.toLowerCase()) {
+        items.push({
+          id: i,
+          name: item.title,
+          description: item.description,
+          price: ethers.utils.formatEther(item.price),
+          seller: item.seller,
+          buyer: item.buyer === ethers.constants.AddressZero ? undefined : item.buyer,
+          state: state,
+          buyTimestamp: item.buyTimestamp ? item.buyTimestamp.toNumber() : undefined,
+          isSold: state === ItemState.Sold, // Backward compatibility
+          imageUrl: '' // No hay campo de imagen en este contrato
+        });
+      }
     }
 
     return items;
@@ -304,6 +324,129 @@ export class ContractService {
     } catch (error) {
       console.error('Error checking contract initialization:', error);
       return false;
+    }
+  }
+
+  // Dispute functions
+  async disputeSale(itemId: number, buyerReasoning: string): Promise<void> {
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const tx = await contractWithSigner.disputeSale(itemId, buyerReasoning);
+    await tx.wait();
+  }
+
+  async disputedSaleReply(itemId: number, sellerReasoning: string): Promise<void> {
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const tx = await contractWithSigner.disputedSaleReply(itemId, sellerReasoning);
+    await tx.wait();
+  }
+
+  async endDispute(itemId: number): Promise<void> {
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const tx = await contractWithSigner.endDispute(itemId);
+    await tx.wait();
+  }
+
+  async itemReceived(itemId: number): Promise<void> {
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const tx = await contractWithSigner.itemReceived(itemId);
+    await tx.wait();
+  }
+
+  async returnItem(itemId: number): Promise<void> {
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const tx = await contractWithSigner.returnItem(itemId);
+    await tx.wait();
+  }
+
+  async setVacationMode(vacationMode: boolean): Promise<void> {
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const tx = await contractWithSigner.setVacationMode(vacationMode);
+    await tx.wait();
+  }
+
+  // Query functions for disputes
+  async getDispute(itemId: number): Promise<Dispute | null> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    try {
+      const dispute = await this.contract.disputedItems(itemId);
+      
+      // Check if dispute exists (disputeId should be > 0 for active disputes)
+      if (dispute.disputeId === 0 && dispute.disputeTimestamp === 0) {
+        return null;
+      }
+      
+      return {
+        disputeId: dispute.disputeId,
+        disputeTimestamp: dispute.disputeTimestamp.toNumber(),
+        buyerReasoning: dispute.buyerReasoning,
+        sellerReasoning: dispute.sellerReasoning
+      };
+    } catch (error) {
+      console.error('Error getting dispute:', error);
+      return null;
+    }
+  }
+
+  async getItemDetails(itemId: number): Promise<Sale | null> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    try {
+      const item = await this.contract.offeredItems(itemId);
+      
+      // Check if item exists
+      if (item.seller === ethers.constants.AddressZero) {
+        return null;
+      }
+      
+      return {
+        seller: item.seller,
+        buyer: item.buyer,
+        title: item.title,
+        description: item.description,
+        price: ethers.utils.formatEther(item.price),
+        state: item.state as ItemState,
+        buyTimestamp: item.buyTimestamp ? item.buyTimestamp.toNumber() : 0
+      };
+    } catch (error) {
+      console.error('Error getting item details:', error);
+      return null;
     }
   }
 } 
