@@ -4,7 +4,10 @@ out = 'out'
 libs = ['lib']
 
 remappings = [
-  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+  "@openzeppelin/contracts@v5.0.1/=lib/openzeppelin-contracts/contracts/",
+  "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+  "@openzeppelin-upgradeable/contracts@v5.0.1/=lib/openzeppelin-contracts-upgradeable/contracts/"
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

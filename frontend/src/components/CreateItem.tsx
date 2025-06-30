@@ -30,6 +30,13 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate, contractService, user
     if (!userAddress) return;
     
     try {
+      // Wait for contract service to be fully initialized
+      const isInitialized = await contractService.isInitialized();
+      if (!isInitialized) {
+        console.log('ContractService not initialized yet, skipping vault info load');
+        return;
+      }
+
       const [balance, locked] = await Promise.all([
         contractService.getUserBalance(userAddress),
         contractService.getUserLockedBalance(userAddress)

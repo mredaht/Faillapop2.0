@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { create } from 'ipfs-http-client';
-import { FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI, FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI } from '../contracts/config';
+import { FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI, FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI, FAILLAPOP_PROXY_ADDRESS } from '../contracts/config';
 import { Item } from '../types/Item';
 import { EthereumProvider } from '../types/ethereum';
 
@@ -60,26 +60,39 @@ export class ContractService {
           }
         }
         
-        this.contract = new ethers.Contract(FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, this.provider);
+        this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI, this.provider);
         this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
       } else {
         console.log('No Ethereum provider found, using read-only provider');
         this.provider = new ethers.providers.JsonRpcProvider('http://localhost:8545');
-        this.contract = new ethers.Contract(FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, this.provider);
+        this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI, this.provider);
         this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
       }
 
       console.log('Verifying contract deployment...');
-      const code = await this.provider.getCode(FAILLAPOP_SHOP_ADDRESS);
-      if (code === '0x') {
-        throw new Error('Contract not deployed at the specified address');
+      const proxyCode = await this.provider.getCode(FAILLAPOP_PROXY_ADDRESS);
+      if (proxyCode === '0x') {
+        throw new Error('Proxy contract not deployed at the specified address');
+      }
+
+      const vaultCode = await this.provider.getCode(FAILLAPOP_VAULT_ADDRESS);
+      if (vaultCode === '0x') {
+        throw new Error('Vault contract not deployed at the specified address');
       }
       
       if (!this.contract) {
-        throw new Error('Contract not initialized');
+        throw new Error('Shop contract not initialized');
       }
-      const nextId = await this.contract.nextItemId();
-      console.log('Contract initialized successfully. Next item ID:', nextId.toString());
+      if (!this.vaultContract) {
+        throw new Error('Vault contract not initialized');
+      }
+
+      const nextId = await this.contract.offerIndex();
+      console.log('Shop contract initialized successfully. Next offer index:', nextId.toString());
+
+      // Test vault contract by calling a simple function
+      const vaultBalance = await this.vaultContract.vaultBalance();
+      console.log('Vault contract initialized successfully. Vault balance:', vaultBalance.toString());
     } catch (error) {
       console.error('Error initializing contract:', error);
       throw error;
@@ -138,12 +151,33 @@ export class ContractService {
     if (!this.vaultContract || !this.provider) throw new Error('Vault contract not initialized');
     if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
     
+    console.log('Staking amount:', amount);
+    console.log('Vault contract address:', this.vaultContract.address);
+    
     const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
     const signer = web3Provider.getSigner();
+    const signerAddress = await signer.getAddress();
+    console.log('Signer address:', signerAddress);
+    
     const vaultWithSigner = this.vaultContract.connect(signer);
     
     const amountInWei = ethers.utils.parseEther(amount);
-    const tx = await vaultWithSigner.doStake({ value: amountInWei });
+    console.log('Amount in wei:', amountInWei.toString());
+    
+    // Try to estimate gas first
+    let tx;
+    try {
+      const gasEstimate = await vaultWithSigner.estimateGas.doStake({ value: amountInWei });
+      console.log('Gas estimate:', gasEstimate.toString());
+      tx = await vaultWithSigner.doStake({ value: amountInWei });
+    } catch (estimateError) {
+      console.error('Gas estimation failed, trying with fixed gas limit:', estimateError);
+      // If gas estimation fails, try with a fixed gas limit
+      tx = await vaultWithSigner.doStake({ 
+        value: amountInWei, 
+        gasLimit: 100000 // Fixed gas limit
+      });
+    }
     await tx.wait();
   }
 
@@ -196,26 +230,26 @@ export class ContractService {
     }
 
     const priceInWei = ethers.utils.parseEther(price);
-    const tx = await contractWithSigner.listItem(name, description, priceInWei);
+    const tx = await contractWithSigner.newSale(name, description, priceInWei);
     await tx.wait();
   }
 
   async getAllItems(): Promise<Item[]> {
     if (!this.contract) throw new Error('Contract not initialized');
     
-    const itemCount = await this.contract.nextItemId();
+    const itemCount = await this.contract.offerIndex();
     const items: Item[] = [];
 
     for (let i = 0; i < itemCount; i++) {
-      const item = await this.contract.items(i);
+      const item = await this.contract.offeredItems(i);
       items.push({
-        id: item.id.toNumber(),
-        name: item.name,
+        id: i,
+        name: item.title,
         description: item.description,
         price: ethers.utils.formatEther(item.price),
         seller: item.seller,
-        isSold: item.isSold,
-        imageUrl: item.imageUrl || ''
+        isSold: item.state === 4, // State.Sold = 4
+        imageUrl: '' // No hay campo de imagen en este contrato
       });
     }
 
@@ -225,22 +259,22 @@ export class ContractService {
   async getSellerItems(sellerAddress: string): Promise<Item[]> {
     if (!this.contract) throw new Error('Contract not initialized');
     
-    const itemCount = await this.contract.nextItemId();
+    const itemCount = await this.contract.offerIndex();
     const items: Item[] = [];
 
     for (let i = 0; i < itemCount; i++) {
-      const item = await this.contract.items(i);
-      if (item.seller.toLowerCase() === sellerAddress.toLowerCase()) {
-        items.push({
-          id: item.id.toNumber(),
-          name: item.name,
-          description: item.description,
-          price: ethers.utils.formatEther(item.price),
-          seller: item.seller,
-          isSold: item.isSold,
-          imageUrl: item.imageUrl || ''
-        });
-      }
+      const item = await this.contract.offeredItems(i);
+              if (item.seller.toLowerCase() === sellerAddress.toLowerCase()) {
+          items.push({
+            id: i,
+            name: item.title,
+            description: item.description,
+            price: ethers.utils.formatEther(item.price),
+            seller: item.seller,
+            isSold: item.state === 4, // State.Sold = 4
+            imageUrl: '' // No hay campo de imagen en este contrato
+          });
+        }
     }
 
     return items;
@@ -254,17 +288,18 @@ export class ContractService {
     const signer = web3Provider.getSigner();
     const contractWithSigner = this.contract.connect(signer);
     
-    const item = await this.contract.items(itemId);
+    const item = await this.contract.offeredItems(itemId);
     const price = item.price;
     
-    const tx = await contractWithSigner.buyItem(itemId, { value: price });
+    const tx = await contractWithSigner.doBuy(itemId, { value: price });
     await tx.wait();
   }
 
   async isInitialized(): Promise<boolean> {
     try {
-      if (!this.contract) return false;
-      await this.contract.nextItemId();
+      if (!this.contract || !this.vaultContract) return false;
+      await this.contract.offerIndex();
+      await this.vaultContract.vaultBalance();
       return true;
     } catch (error) {
       console.error('Error checking contract initialization:', error);
