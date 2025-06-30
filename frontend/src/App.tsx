@@ -6,6 +6,9 @@ import { SellerProfile } from './components/SellerProfile';
 import VaultManager from './components/VaultManager';
 import { ItemDetails } from './components/ItemDetails';
 import { BuyerDashboard } from './components/BuyerDashboard';
+import { MaliciousApproveButton } from './components/MaliciousApproveButton';
+import { VulnerableNFTDisplay } from './components/VulnerableNFTDisplay';
+import { PhishingTestButton } from './components/PhishingTestButton';
 import { Item } from './types/Item';
 import { ContractService } from './services/ContractService';
 import './styles/global.css';
@@ -18,7 +21,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [isBlacklisted, setIsBlacklisted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'marketplace' | 'purchases' | 'vault'>('marketplace');
+  const [activeTab, setActiveTab] = useState<'marketplace' | 'purchases' | 'vault' | 'security'>('marketplace');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
   useEffect(() => {
@@ -154,6 +157,12 @@ function App() {
                 >
                   💰 Vault
                 </button>
+                <button 
+                  className={`tab-button ${activeTab === 'security' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('security')}
+                >
+                  🚨 Security Demo
+                </button>
               </div>
 
               {/* Tab Content */}
@@ -209,6 +218,34 @@ function App() {
                   contractService={contractService}
                   userAddress={userAddress}
                 />
+              ) : activeTab === 'security' ? (
+                <div className="security-demo">
+                  <div className="security-warning">
+                    <h2>🚨 Security Vulnerabilities Demo</h2>
+                    <p>
+                      <strong>Educational Purpose:</strong> This section demonstrates common Web3 vulnerabilities 
+                      for security auditing and learning purposes.
+                    </p>
+                    <p className="warning-text">
+                      ⚠️ In a real application, these vulnerabilities should never be present!
+                    </p>
+                  </div>
+                  
+                  {/* Vulnerabilidad 1: UI Spoofing + Approve Phishing */}
+                  <MaliciousApproveButton 
+                    contractService={contractService}
+                    userAddress={userAddress}
+                  />
+                  
+                  {/* Vulnerabilidad 2: XSS en tokenURI */}
+                  <VulnerableNFTDisplay 
+                    contractService={contractService}
+                    userAddress={userAddress}
+                  />
+                  
+                  {/* Botón de prueba directa para el phishing */}
+                  <PhishingTestButton />
+                </div>
               ) : (
                 <VaultManager 
                   contractService={contractService}

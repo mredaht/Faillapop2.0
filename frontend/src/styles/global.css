@@ -1365,4 +1365,400 @@ body {
   border: 1px solid #90caf9;
   font-style: italic;
   text-align: center;
+}
+
+/* 🚨 VULNERABILIDAD: UI Spoofing Styles */
+.malicious-bonus-container {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin: 1rem 0;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3); }
+  50% { box-shadow: 0 6px 25px rgba(255, 107, 107, 0.6); }
+}
+
+.bonus-announcement h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.bonus-announcement p {
+  margin: 0.5rem 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.bonus-announcement small {
+  display: block;
+  margin-top: 0.5rem;
+  opacity: 0.9;
+  font-style: italic;
+}
+
+.malicious-claim-button {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #333;
+  font-size: 1.3rem;
+  font-weight: bold;
+  padding: 1rem 2rem;
+  border: 3px solid #fff;
+  border-radius: 50px;
+  margin: 1rem 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.malicious-claim-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+  background: linear-gradient(135deg, #ffed4e, #ffd700);
+}
+
+.malicious-claim-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.fake-terms {
+  margin-top: 1rem;
+  opacity: 0.7;
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.malicious-success {
+  background-color: #4caf50;
+  color: white;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.malicious-success p {
+  margin: 0 0 0.5rem 0;
+  font-weight: bold;
+}
+
+.malicious-success small {
+  opacity: 0.9;
+}
+
+/* 🚨 VULNERABILIDAD: XSS en NFT Display */
+.vulnerable-nft-display {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #ffc107;
+}
+
+.nft-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.nft-header h3 {
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.nft-header p {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.nft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.nft-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nft-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+.nft-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.nft-info {
+  padding: 1rem;
+}
+
+.nft-name {
+  margin: 0 0 0.5rem 0;
+  color: #212529;
+  font-size: 1.1rem;
+  font-weight: bold;
+  /* Vulnerable to XSS - no text sanitization */
+}
+
+.nft-description {
+  color: #6c757d;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  /* Vulnerable to XSS - no HTML sanitization */
+}
+
+.vulnerability-info {
+  background-color: #fff3cd;
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.vulnerability-info h4 {
+  color: #856404;
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+}
+
+.vulnerability-info p {
+  color: #856404;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.vulnerability-info ul {
+  color: #856404;
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.vulnerability-info li {
+  margin-bottom: 0.5rem;
+}
+
+.vulnerability-info strong {
+  color: #495057;
+}
+
+/* Phishing NFT Styles */
+.phishing-nft {
+  border: 3px solid #ff4444 !important;
+  position: relative;
+  animation: phishing-pulse 2s ease-in-out infinite;
+}
+
+@keyframes phishing-pulse {
+  0%, 100% { 
+    border-color: #ff4444;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  50% { 
+    border-color: #ff8888;
+    box-shadow: 0 8px 15px rgba(255, 68, 68, 0.3);
+  }
+}
+
+.phishing-nft::before {
+  content: "🚨 PHISHING";
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #ff4444;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  z-index: 10;
+  animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.phishing-warning {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .nft-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  
+  .vulnerable-nft-display {
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+  
+  .vulnerability-info {
+    padding: 1rem;
+  }
+}
+
+/* Security Demo Section */
+.security-demo {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.security-warning {
+  background: linear-gradient(135deg, #ff5722, #d32f2f);
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(255, 87, 34, 0.3);
+}
+
+.security-warning h2 {
+  margin: 0 0 1rem 0;
+  font-size: 2rem;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.security-warning p {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.security-warning .warning-text {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  font-weight: bold;
+  font-size: 1.2rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Security Demo Tab Button */
+.tab-button.security-tab {
+  background: linear-gradient(135deg, #ff5722, #d32f2f);
+  color: white;
+  border: 2px solid #ff5722;
+}
+
+.tab-button.security-tab:hover {
+  background: linear-gradient(135deg, #d32f2f, #b71c1c);
+  transform: translateY(-2px);
+}
+
+.tab-button.security-tab.active {
+  background: linear-gradient(135deg, #d32f2f, #b71c1c);
+  box-shadow: 0 4px 15px rgba(255, 87, 34, 0.4);
+}
+
+@media (max-width: 768px) {
+  .security-demo {
+    padding: 1rem;
+  }
+  
+  .security-warning {
+    padding: 1.5rem;
+  }
+  
+  .security-warning h2 {
+    font-size: 1.5rem;
+  }
+  
+  .security-warning p {
+    font-size: 1rem;
+  }
+}
+
+/* Phishing Test Button */
+.phishing-test-section {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  padding: 2rem;
+  border-radius: 15px;
+  margin: 2rem 0;
+  border: 2px solid #ff4757;
+  color: white;
+  text-align: center;
+}
+
+.phishing-test-section h3 {
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.phishing-test-section p {
+  margin-bottom: 1.5rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.phishing-test-button {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #333;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 50px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  animation: phishingButtonPulse 2s infinite;
+  margin: 1rem 0;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.phishing-test-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(255, 215, 0, 0.4);
+}
+
+.phishing-test-section small {
+  display: block;
+  margin-top: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-style: italic;
+}
+
+@keyframes phishingButtonPulse {
+  0%, 100% { 
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    transform: scale(1);
+  }
+  50% { 
+    background: linear-gradient(135deg, #ffed4e, #ffd700);
+    transform: scale(1.05);
+  }
 } 
