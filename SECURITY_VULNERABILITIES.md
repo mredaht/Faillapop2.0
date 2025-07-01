@@ -94,6 +94,165 @@ await tokenContract.approve(MALICIOUS_SPENDER, ethers.constants.MaxUint256);
 
 ---
 
+### 3. **Admin Panel Bypass + IDOR (Insecure Direct Object Reference)**
+**📁 Archivo:** `frontend/src/components/VulnerableAdminPanel.tsx`  
+**🎯 Contratos afectados:** Frontend authorization system, user data access
+
+#### 🔍 **Descripción del Ataque**
+- **Técnica**: Bypass de autorización del lado del cliente + acceso directo a objetos
+- **Objetivo**: Acceder a panel de administración y datos sensibles de usuarios
+- **Vector**: Autorización implementada solo en frontend + acceso directo por ID
+
+#### 🛠️ **Cómo Funciona**
+1. La aplicación implementa autorización solo en el frontend (JavaScript)
+2. Múltiples métodos de bypass disponibles (URL, localStorage, debug mode)
+3. Una vez dentro, acceso directo a datos de cualquier usuario por ID
+4. Exposición de información crítica: private keys, seed phrases, datos personales
+
+#### 📊 **Implementación Técnica**
+```typescript
+// 🚨 VULNERABILIDAD: Autorización solo del lado del cliente
+const checkAdminAccess = () => {
+  const isAdmin = userAddress === '0xADMIN_ADDRESS_THAT_DOESNT_EXIST';
+  
+  // Bypass methods:
+  const adminBypass = urlParams.get('admin') === 'true';
+  const localStorageBypass = localStorage.getItem('admin_mode') === 'enabled';
+  const debugMode = (window as any).DEBUG_MODE;
+  
+  if (adminBypass || localStorageBypass || debugMode) {
+    setIsAdminPanelVisible(true); // ¡Acceso otorgado!
+  }
+};
+
+// 🚨 VULNERABILIDAD: IDOR - Sin validación de permisos
+const getUserData = (userId: number) => {
+  return FAKE_ADMIN_USERS[userId]; // Acceso directo por ID
+};
+```
+
+#### 💀 **Métodos de Bypass**
+```javascript
+// Método 1: Parámetro URL
+window.location.href = window.location.href + '?admin=true';
+
+// Método 2: localStorage
+localStorage.setItem('admin_mode', 'enabled');
+
+// Método 3: Debug Mode
+window.DEBUG_MODE = true;
+
+// Método 4: IDOR Attack
+// Una vez dentro, acceso a cualquier usuario:
+getUserData(0); // Datos del usuario ID 0
+getUserData(1); // Datos del usuario ID 1
+getUserData(2); // Datos del usuario ID 2
+```
+
+#### 🔓 **Datos Sensibles Expuestos**
+- 🔑 **Private Keys**: Acceso completo a wallets
+- 🔐 **Seed Phrases**: Recuperación de wallets  
+- 📧 **Emails**: Direcciones de correo electrónico
+- 📱 **Teléfonos**: Números de contacto
+- 📍 **Ubicaciones**: Direcciones físicas
+- 💰 **Balances**: Saldos de criptomonedas
+- 📊 **Historial**: Transacciones completas
+
+#### 🛡️ **Mitigaciones**
+- **Autorización Backend**: Implementar control de acceso en el servidor
+- **JWT Tokens**: Usar tokens seguros validados por el servidor
+- **RBAC**: Control de acceso basado en roles
+- **API Security**: Validar permisos en cada llamada API
+- **Remover Debug**: Nunca dejar código de desarrollo en producción
+
+---
+
+### 4. **Purchase Manipulation + Race Condition (Integrado en Marketplace)**
+**📁 Archivo:** `frontend/src/components/ItemDetails.tsx` (Modo Security Demo)  
+**🎯 Contratos afectados:** Purchase process, transaction validation
+
+#### 🔍 **Descripción del Ataque**
+- **Técnica**: Manipulación de precios + condiciones de carrera integradas en el flujo de compra
+- **Objetivo**: Comprar items a precios manipulados o explotar timing de transacciones
+- **Vector**: Interfaz de compra vulnerable disponible en el marketplace de demostración
+
+#### 🛠️ **Cómo Acceder**
+1. Ir al tab "🚨 Security Demo"
+2. Buscar la sección "🛒 Vulnerable Marketplace Item"
+3. Hacer clic en el item con borde rojo
+4. Activar "Enable Vulnerability Mode" en el modal
+5. Seleccionar tipo de ataque y ejecutar
+
+#### 🛠️ **Cómo Funciona**
+1. **Price Manipulation**: Modificar precio en el frontend antes de enviar transacción
+2. **Race Condition**: Enviar múltiples transacciones simultáneamente
+3. **Client-side Validation Bypass**: Saltar validaciones del frontend
+
+#### 📊 **Implementación Técnica**
+```typescript
+// 🚨 VULNERABILIDAD: Race Condition integrada
+if (raceConditionActive) {
+  console.log('⚡ Launching race condition attack...');
+  const promises = [];
+  
+  for (let i = 0; i < 3; i++) {
+    promises.push(
+      contractService.buyItem(item.id, priceManipulation ? manipulatedPrice : item.price)
+    );
+  }
+  
+  const results = await Promise.allSettled(promises);
+}
+
+// 🚨 VULNERABILIDAD: Price Manipulation
+if (priceManipulation) {
+  console.log(`Original price: ${item.price} ETH`);
+  console.log(`Manipulated price: ${manipulatedPrice} ETH`);
+  await contractService.buyItem(item.id, manipulatedPrice);
+}
+  }
+  await Promise.all(promises); // Condición de carrera
+};
+```
+
+#### 💀 **Vectores de Ataque**
+```javascript
+// Método 1: Manipulación de Precio
+const originalPrice = "5.0"; // ETH
+const manipulatedPrice = "0.000001"; // ETH
+// Ahorro: 99.99%+ descuento
+
+// Método 2: Race Condition
+// Enviar 3 transacciones simultáneas:
+// - Puede causar double spending
+// - Bypass de límites de compra
+// - Estado inconsistente del contrato
+
+// Método 3: Front-running
+// 1. Monitorear mempool
+// 2. Detectar transacción de compra
+// 3. Enviar transacción idéntica con gas más alto
+// 4. Confirmar primero
+
+// Método 4: MEV (Maximal Extractable Value)
+// Reorganizar transacciones para beneficio propio
+```
+
+#### 💰 **Impacto Financiero**
+- **Price Manipulation**: Comprar items por casi $0
+- **Race Conditions**: Double spending, bypass de límites
+- **Front-running**: Robar oportunidades de compra
+- **MEV Attacks**: Extraer valor de transacciones ajenas
+
+#### 🛡️ **Mitigaciones**
+- **Smart Contract Validation**: Validar precios en el contrato
+- **Rate Limiting**: Limitar transacciones por usuario/tiempo
+- **Commit-Reveal**: Esquemas de compromiso para operaciones sensibles
+- **MEV Protection**: Usar servicios anti-MEV como Flashbots
+- **Nonces**: Prevenir replay attacks con nonces únicos
+
+---
+
 ## 🚀 **CÓMO PROBAR LAS VULNERABILIDADES**
 
 ### 🔧 **Ejecutar la Demo**
@@ -115,6 +274,32 @@ await tokenContract.approve(MALICIOUS_SPENDER, ethers.constants.MaxUint256);
    - Observar los alerts de XSS que se ejecutan
    - Revisar la consola para logs maliciosos
    - **🆕 NUEVO:** El 5º NFT (con borde rojo pulsante) ejecuta un ataque de phishing redirect
+
+5. **Probar Admin Panel Bypass + IDOR:**
+   - Hacer clic en "🔑 REQUEST ADMIN ACCESS"
+   - Probar los métodos de bypass:
+     - **URL Bypass**: Agrega `?admin=true` a la URL
+     - **localStorage Bypass**: Ejecuta `localStorage.setItem('admin_mode', 'enabled')`
+     - **Debug Mode**: Ejecuta `window.DEBUG_MODE = true` en la consola
+   - Una vez dentro, cambiar entre User ID 0, 1, 2 para ver datos sensibles
+   - Observar private keys, seed phrases y datos personales expuestos
+
+6. **Probar Purchase Manipulation:**
+   - Seleccionar método de ataque:
+     - **✅ Normal Purchase**: Compra legítima
+     - **💰 Price Manipulation**: Modificar precio antes de comprar
+     - **🏃‍♂️ Race Condition**: Múltiples transacciones simultáneas
+     - **⚡ Front-running**: Simular front-running attack
+   - **Para Price Manipulation**:
+     - Cambiar el precio de 5.0 ETH a 0.000001 ETH
+     - Observar el ahorro del 99.99%+
+     - Ejecutar compra con precio manipulado
+   - **Para Race Condition**:
+     - Lanzar 3 transacciones simultáneas
+     - Observar logs de múltiples intentos de compra
+   - **Para Front-running**:
+     - Simular monitoreo de mempool
+     - Ver proceso de front-running en acción
 
 ### 📝 **Logs de Seguridad**
 La demo genera logs educativos en la consola:

@@ -9,7 +9,9 @@ import { BuyerDashboard } from './components/BuyerDashboard';
 import { MaliciousApproveButton } from './components/MaliciousApproveButton';
 import { VulnerableNFTDisplay } from './components/VulnerableNFTDisplay';
 import { PhishingTestButton } from './components/PhishingTestButton';
-import { Item } from './types/Item';
+import { VulnerableAdminPanel } from './components/VulnerableAdminPanel';
+
+import { Item, ItemState } from './types/Item';
 import { ContractService } from './services/ContractService';
 import './styles/global.css';
 
@@ -23,6 +25,34 @@ function App() {
   const [isBlacklisted, setIsBlacklisted] = useState(false);
   const [activeTab, setActiveTab] = useState<'marketplace' | 'purchases' | 'vault' | 'security'>('marketplace');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  
+  // Get the first available item for security demonstrations
+  const getSecurityDemoItem = (): Item | null => {
+    const availableItems = items.filter(item => 
+      item.state === ItemState.Selling && 
+      item.seller.toLowerCase() !== userAddress?.toLowerCase()
+    );
+    
+    if (availableItems.length > 0) {
+      return {
+        ...availableItems[0],
+        name: `🚨 ${availableItems[0].name} (VULNERABLE DEMO)`,
+        description: `${availableItems[0].description}\n\n⚠️ This item is being used for vulnerability demonstration purposes.`
+      };
+    }
+    
+    // Fallback demo item if no real items available
+    return {
+      id: 999,
+      name: "🚨 VULNERABLE PURCHASE DEMO",
+      description: "No real items available. Create an item in the marketplace first, then return here for realistic vulnerability testing.",
+      price: "0.1",
+      seller: "0x1234567890123456789012345678901234567890",
+      state: ItemState.Selling,
+      isSold: false,
+      imageUrl: ""
+    };
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -208,6 +238,8 @@ function App() {
                           onConfirmReceipt={handleConfirmReceipt}
                           userAddress={userAddress}
                           isOpen={true}
+                          isSecurityDemo={false}
+                          contractService={contractService}
                         />
                       )}
                     </>
@@ -245,6 +277,99 @@ function App() {
                   
                   {/* Botón de prueba directa para el phishing */}
                   <PhishingTestButton />
+                  
+                  {/* Vulnerabilidad 3: Admin Panel Bypass + IDOR */}
+                  <VulnerableAdminPanel 
+                    contractService={contractService}
+                    userAddress={userAddress}
+                  />
+                  
+                  {/* Vulnerabilidad 4: Purchase Manipulation - Integrated in Marketplace */}
+                  <div className="vulnerability-section">
+                    <h3>🛒 Vulnerable Marketplace Item</h3>
+                    <p>
+                      {items.filter(item => 
+                        item.state === ItemState.Selling && 
+                        item.seller.toLowerCase() !== userAddress?.toLowerCase()
+                      ).length > 0 
+                        ? 'Click on the item below to test purchase vulnerabilities on a REAL marketplace item:' 
+                        : 'Create an item in the marketplace first, then return here to test vulnerabilities on real items:'
+                      }
+                    </p>
+                    
+                    <div className="items-grid">
+                      {(() => {
+                        const demoItem = getSecurityDemoItem();
+                        if (!demoItem) return null;
+                        
+                        return (
+                          <div 
+                            className="item-card vulnerable-item"
+                            onClick={() => setSelectedItem(demoItem)}
+                            style={{ cursor: 'pointer', border: '2px solid #ff4757' }}
+                          >
+                            <div className="item-image">
+                              {demoItem.imageUrl ? (
+                                <img 
+                                  src={demoItem.imageUrl} 
+                                  alt={demoItem.name}
+                                  style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.parentElement!.innerHTML = `
+                                      <div style="width: 100%; height: 200px; background: linear-gradient(135deg, #ff6b6b, #ee5a52); display: flex; align-items: center; justify-content: center; color: white; font-size: 2em;">
+                                        🚨
+                                      </div>
+                                    `;
+                                  }}
+                                />
+                              ) : (
+                                <div style={{
+                                  width: '100%',
+                                  height: '200px',
+                                  background: 'linear-gradient(135deg, #ff6b6b, #ee5a52)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'white',
+                                  fontSize: '2em'
+                                }}>
+                                  🚨
+                                </div>
+                              )}
+                            </div>
+                            <div className="item-details">
+                              <h3>{demoItem.name}</h3>
+                              <p className="description">{demoItem.description.split('\n\n')[0]}...</p>
+                              <p className="price">{demoItem.price} ETH</p>
+                              <p className="seller">
+                                {demoItem.id === 999 ? 'Demo Seller' : `${demoItem.seller.slice(0, 6)}...${demoItem.seller.slice(-4)}`}
+                              </p>
+                              <div className="vulnerability-badge">
+                                ⚠️ VULNERABLE ITEM
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  
+                  {/* Modal para el item vulnerable */}
+                  {selectedItem && (selectedItem.id === 999 || selectedItem.name.includes('VULNERABLE DEMO')) && (
+                    <ItemDetails
+                      item={selectedItem}
+                      onClose={() => setSelectedItem(null)}
+                      onBuy={handleBuyItem}
+                      onDispute={handleDispute}
+                      onConfirmReceipt={handleConfirmReceipt}
+                      userAddress={userAddress}
+                      isOpen={true}
+                      isSecurityDemo={true}
+                      contractService={contractService}
+                    />
+                  )}
                 </div>
               ) : (
                 <VaultManager 

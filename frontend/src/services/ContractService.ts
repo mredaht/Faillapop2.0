@@ -376,17 +376,9 @@ export class ContractService {
     await tx.wait();
   }
 
-  async returnItem(itemId: number): Promise<void> {
-    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
-    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
-    
-    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
-    const signer = web3Provider.getSigner();
-    const contractWithSigner = this.contract.connect(signer);
-    
-    const tx = await contractWithSigner.returnItem(itemId);
-    await tx.wait();
-  }
+  // Note: returnItem function removed - it can only be called by DAO role
+  // This function is part of dispute resolution process handled by DAO
+  // async returnItem(itemId: number): Promise<void> { ... }
 
   async setVacationMode(vacationMode: boolean): Promise<void> {
     if (!this.contract || !this.provider) throw new Error('Contract not initialized');

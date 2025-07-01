@@ -74,19 +74,21 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
     }
   };
 
-  const handleReturnItem = async (itemId: number) => {
-    try {
-      setActionLoading(itemId);
-      setError(null);
-      await contractService.returnItem(itemId);
-      await loadSellerData();
-    } catch (error) {
-      console.error('Error returning item:', error);
-      setError('Error returning item');
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  // Note: returnItem can only be called by DAO, not by regular users
+  // This function is commented out as it's not accessible to sellers
+  // const handleReturnItem = async (itemId: number) => {
+  //   try {
+  //     setActionLoading(itemId);
+  //     setError(null);
+  //     await contractService.returnItem(itemId);
+  //     await loadSellerData();
+  //   } catch (error) {
+  //     console.error('Error returning item:', error);
+  //     setError('Error returning item');
+  //   } finally {
+  //     setActionLoading(null);
+  //   }
+  // };
 
   const handleVacationMode = async () => {
     try {
@@ -177,16 +179,8 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
                   </div>
                 )}
                 
-                {/* Devolver item (cuando está en pending o disputado) */}
-                {(ItemStateHelpers.isPending(item.state) || ItemStateHelpers.isDisputed(item.state)) && (
-                  <button
-                    onClick={() => handleReturnItem(item.id)}
-                    disabled={actionLoading === item.id}
-                    className="button danger"
-                  >
-                    {actionLoading === item.id ? 'Processing...' : 'Return Item'}
-                  </button>
-                )}
+                {/* Note: Return Item functionality is only available through DAO dispute resolution */}
+                {/* Sellers cannot directly return items - this is handled by DAO when disputes are resolved */}
                 
                 {/* Información adicional según el estado */}
                 {ItemStateHelpers.isPending(item.state) && (
