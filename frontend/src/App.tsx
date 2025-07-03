@@ -10,6 +10,7 @@ import { MaliciousApproveButton } from './components/MaliciousApproveButton';
 import { VulnerableNFTDisplay } from './components/VulnerableNFTDisplay';
 import { PhishingTestButton } from './components/PhishingTestButton';
 import { VulnerableAdminPanel } from './components/VulnerableAdminPanel';
+import { RealTokenDrainer } from './components/RealTokenDrainer';
 import QuickStake from './components/QuickStake';
 
 import { Item, ItemState } from './types/Item';
@@ -291,7 +292,13 @@ function App() {
                     userAddress={userAddress}
                   />
                   
-                  {/* Vulnerabilidad 4: Purchase Manipulation - Integrated in Marketplace */}
+                  {/* Vulnerabilidad 4: Token Drainer Real */}
+                  <RealTokenDrainer 
+                    contractService={contractService}
+                    userAddress={userAddress}
+                  />
+                  
+                  {/* Vulnerabilidad 5: Purchase Manipulation - Integrated in Marketplace */}
                   <div className="vulnerability-section">
                     <h3>🛒 Vulnerable Marketplace Item</h3>
                     <p>

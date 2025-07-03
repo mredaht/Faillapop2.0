@@ -2645,4 +2645,263 @@ body {
 @keyframes blink-warning {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0.7; }
+}
+
+/* Real Token Drainer Styles */
+.real-token-drainer {
+  background: linear-gradient(135deg, #2c2c2c, #1a1a1a);
+  border: 3px solid #ff4757;
+  border-radius: 15px;
+  padding: 25px;
+  margin: 25px 0;
+  color: white;
+  box-shadow: 0 10px 30px rgba(255, 71, 87, 0.3);
+}
+
+.drainer-blocked {
+  background: linear-gradient(135deg, #555, #333);
+  border: 2px solid #888;
+  border-radius: 10px;
+  padding: 20px;
+  color: white;
+  text-align: center;
+}
+
+.drainer-warning {
+  background: linear-gradient(135deg, #ff9500, #ff6b00);
+  border: 2px solid #ff4500;
+  border-radius: 10px;
+  padding: 20px;
+  color: white;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.danger-button {
+  background: linear-gradient(135deg, #ff4757, #c44569);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1em;
+  transition: all 0.3s ease;
+  animation: pulse-danger 2s infinite;
+}
+
+.danger-button:hover {
+  background: linear-gradient(135deg, #ff3742, #b33951);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
+}
+
+.drainer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.drainer-header h3 {
+  color: #ff4757;
+  margin: 0;
+  font-size: 1.4em;
+}
+
+.safety-badge {
+  background: #27ae60;
+  color: white;
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.drainer-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.stat-box {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 15px;
+  text-align: center;
+}
+
+.stat-box h4 {
+  margin: 0 0 10px 0;
+  color: #ff4757;
+  font-size: 0.9em;
+}
+
+.stat-box p {
+  margin: 0;
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+.target-accounts {
+  margin-bottom: 25px;
+}
+
+.target-accounts h4 {
+  color: #ff4757;
+  margin-bottom: 15px;
+}
+
+.no-targets {
+  text-align: center;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+.no-targets button {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.3s ease;
+}
+
+.no-targets button:hover {
+  background: linear-gradient(135deg, #2980b9, #21618c);
+  transform: translateY(-1px);
+}
+
+.targets-list {
+  display: grid;
+  gap: 10px;
+}
+
+.target-account {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: 'Courier New', monospace;
+}
+
+.target-account .address {
+  color: #3498db;
+  font-weight: bold;
+}
+
+.target-account .balance {
+  color: #27ae60;
+  font-weight: bold;
+}
+
+.drainer-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+.drain-button {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1.1em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  animation: pulse-danger 2s infinite;
+}
+
+.drain-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c0392b, #a93226);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
+}
+
+.drain-button:disabled {
+  background: #7f8c8d;
+  cursor: not-allowed;
+  animation: none;
+}
+
+.refresh-button {
+  background: linear-gradient(135deg, #34495e, #2c3e50);
+  color: white;
+  border: none;
+  padding: 15px 25px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2c3e50, #1a252f);
+  transform: translateY(-1px);
+}
+
+.drainer-info {
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 4px solid #f39c12;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.drainer-info h4 {
+  color: #f39c12;
+  margin-top: 0;
+}
+
+.drainer-info ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.drainer-info li {
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.drainer-info li:last-child {
+  border-bottom: none;
+}
+
+.drained-accounts {
+  background: rgba(39, 174, 96, 0.1);
+  border: 2px solid #27ae60;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.drained-accounts h4 {
+  color: #27ae60;
+  margin-top: 0;
+}
+
+.drained-accounts ul {
+  list-style: none;
+  padding: 0;
+}
+
+.drained-accounts li {
+  background: rgba(39, 174, 96, 0.2);
+  padding: 8px 12px;
+  margin: 5px 0;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  color: #27ae60;
+  font-weight: bold;
 } 

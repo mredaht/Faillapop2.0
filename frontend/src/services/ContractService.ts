@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { create } from 'ipfs-http-client';
-import { FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI, FAILLAPOP_PROXY_ADDRESS } from '../contracts/config';
+import { FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI, FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI, FAILLAPOP_PROXY_ADDRESS } from '../contracts/config';
 import { Item, ItemState, Dispute, Sale } from '../types/Item';
 import { EthereumProvider } from '../types/ethereum';
 
@@ -17,7 +17,9 @@ declare global {
 export class ContractService {
   private contract: ethers.Contract | null = null;
   private vaultContract: ethers.Contract | null = null;
+  private tokenContract: ethers.Contract | null = null;
   private provider: ethers.providers.Provider | null = null;
+  private signer: ethers.Signer | null = null;
   private ipfs: any;
 
   constructor() {
@@ -62,11 +64,15 @@ export class ContractService {
         
         this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI.abi, this.provider);
         this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
+        this.tokenContract = new ethers.Contract(FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI.abi, this.provider);
+        this.signer = (this.provider as ethers.providers.Web3Provider).getSigner();
       } else {
         console.log('No Ethereum provider found, using read-only provider');
         this.provider = new ethers.providers.JsonRpcProvider('http://localhost:8545');
         this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI.abi, this.provider);
         this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
+        this.tokenContract = new ethers.Contract(FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI.abi, this.provider);
+        this.signer = null; // No signer available with read-only provider
       }
 
       console.log('Verifying contract deployment...');
@@ -108,6 +114,27 @@ export class ContractService {
   async isBlacklisted(address: string): Promise<boolean> {
     // Por ahora, retornamos false ya que no tenemos esta función en el contrato
     return false;
+  }
+
+  async getEthBalance(address: string): Promise<string> {
+    if (!this.provider) throw new Error('Provider not initialized');
+    const balance = await this.provider.getBalance(address);
+    return ethers.utils.formatEther(balance);
+  }
+
+  async getTokenBalance(address: string): Promise<ethers.BigNumber> {
+    if (!this.tokenContract) throw new Error('Token contract not initialized');
+    return await this.tokenContract.balanceOf(address);
+  }
+
+  async mintTokens(to: string, amount: string): Promise<ethers.ContractTransaction> {
+    if (!this.tokenContract) throw new Error('Token contract not initialized');
+    if (!this.signer) throw new Error('Signer not initialized');
+    
+    const tokenContractWithSigner = this.tokenContract.connect(this.signer);
+    const amountWei = ethers.utils.parseEther(amount);
+    
+    return await tokenContractWithSigner.mint(to, amountWei);
   }
 
   // Vault functions
