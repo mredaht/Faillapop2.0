@@ -7,11 +7,10 @@ import VaultManager from './components/VaultManager';
 import { ItemDetails } from './components/ItemDetails';
 import { BuyerDashboard } from './components/BuyerDashboard';
 import { MaliciousApproveButton } from './components/MaliciousApproveButton';
-import { VulnerableNFTDisplay } from './components/VulnerableNFTDisplay';
-import { PhishingTestButton } from './components/PhishingTestButton';
 import { VulnerableAdminPanel } from './components/VulnerableAdminPanel';
 import { RealTokenDrainer } from './components/RealTokenDrainer';
 import QuickStake from './components/QuickStake';
+import RaceConditionDemo from './components/RaceConditionDemo';
 
 import { Item, ItemState } from './types/Item';
 import { ContractService } from './services/ContractService';
@@ -25,7 +24,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [isBlacklisted, setIsBlacklisted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'marketplace' | 'purchases' | 'vault' | 'security'>('marketplace');
+  const [activeTab, setActiveTab] = useState<'marketplace' | 'purchases' | 'vault' | 'security' | 'race-demo'>('marketplace');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   
   // Get the first available item for security demonstrations
@@ -195,6 +194,12 @@ function App() {
                 >
                   🚨 Security Demo
                 </button>
+                <button 
+                  className={`tab-button ${activeTab === 'race-demo' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('race-demo')}
+                >
+                  ⚡ Race Condition Demo
+                </button>
               </div>
 
               {/* Tab Content */}
@@ -276,15 +281,6 @@ function App() {
                     contractService={contractService}
                     userAddress={userAddress}
                   />
-                  
-                  {/* Vulnerabilidad 2: XSS en tokenURI */}
-                  <VulnerableNFTDisplay 
-                    contractService={contractService}
-                    userAddress={userAddress}
-                  />
-                  
-                  {/* Botón de prueba directa para el phishing */}
-                  <PhishingTestButton />
                   
                   {/* Vulnerabilidad 3: Admin Panel Bypass + IDOR */}
                   <VulnerableAdminPanel 
@@ -379,6 +375,11 @@ function App() {
                     />
                   )}
                 </div>
+              ) : activeTab === 'race-demo' ? (
+                <RaceConditionDemo 
+                  contractService={contractService}
+                  userAddress={userAddress}
+                />
               ) : (
                 <VaultManager 
                   contractService={contractService}

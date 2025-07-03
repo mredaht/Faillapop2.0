@@ -67,6 +67,13 @@ interface IFP_Shop {
     function modifySale(uint256 itemId, string calldata newTitle, string calldata newDesc, uint256 newPrice) external;
 
     /**
+        @notice Quick price change function for sellers (VULNERABLE)
+        @param itemId ID of the item being modified
+        @param newPrice New price in Ether of the item being sold
+     */
+    function quickPriceChange(uint256 itemId, uint256 newPrice) external;
+
+    /**
         @notice Endpoint to cancel an active sale
         @param itemId The ID of the item which sale is being cancelled
     */

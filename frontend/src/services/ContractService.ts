@@ -342,6 +342,19 @@ export class ContractService {
     await tx.wait();
   }
 
+  async quickPriceChange(itemId: number, newPriceInWei: ethers.BigNumber): Promise<ethers.ContractTransaction> {
+    if (!this.contract || !this.provider) throw new Error('Contract not initialized');
+    if (typeof window.ethereum === 'undefined') throw new Error('Please install MetaMask!');
+    
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = web3Provider.getSigner();
+    const contractWithSigner = this.contract.connect(signer);
+    
+    const tx = await contractWithSigner.quickPriceChange(itemId, newPriceInWei);
+    await tx.wait();
+    return tx;
+  }
+
   async isInitialized(): Promise<boolean> {
     try {
       if (!this.contract || !this.vaultContract) return false;

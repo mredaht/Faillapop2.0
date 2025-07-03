@@ -2711,7 +2711,7 @@ body {
 
 .safety-badge {
   background: #27ae60;
-  color: white;
+  color: #f8fafc;
   padding: 5px 12px;
   border-radius: 15px;
   font-size: 0.8em;
@@ -2764,7 +2764,7 @@ body {
 
 .no-targets button {
   background: linear-gradient(135deg, #3498db, #2980b9);
-  color: white;
+  color: #f8fafc;
   border: none;
   padding: 10px 20px;
   border-radius: 6px;

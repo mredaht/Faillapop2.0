@@ -159,21 +159,47 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
         @notice Endpoint to buy an item
         @param itemId The ID of the item being bought
         @dev The user must send the exact amount of Ether to buy the item
+        @dev ⚠️ VULNERABLE: Race condition and price manipulation possible
      */
     function doBuy(uint256 itemId) external payable {
         require(offeredItems[itemId].seller != address(0), "itemId does not exist");
         require(offeredItems[itemId].state == State.Selling, "Item cannot be bought");
-        require(msg.value >= offeredItems[itemId].price, "Incorrect amount of Ether sent");
+        
+        // VULNERABILITY 1: Price can be changed between this check and the state update
+        // Store the price at the time of check (but don't use it for validation)
+        uint256 priceAtCheck = offeredItems[itemId].price;
+        
+        require(msg.value >= priceAtCheck, "Incorrect amount of Ether sent");
         require(
             !hasRole(BLACKLISTED_ROLE, offeredItems[itemId].seller),
             "Seller is blacklisted"
         );
         
+        // VULNERABILITY 2: Simulate network delay or complex computation
+        // This creates a window for race conditions and price manipulation
+        _simulateProcessingDelay(itemId);
+        
+        // VULNERABILITY 3: Multiple buyers can pass the above checks before state changes
+        // No atomic check-and-set operation
         offeredItems[itemId].buyer = msg.sender;
         offeredItems[itemId].state = State.Pending;
         offeredItems[itemId].buyTimestamp = block.timestamp;
         
         emit Buy(msg.sender, itemId);
+    }
+    
+    /**
+        @notice Simulates processing delay to create race condition window
+        @param itemId The ID of the item being processed
+        @dev This creates a vulnerability window where price can be manipulated
+     */
+    function _simulateProcessingDelay(uint256 itemId) internal view {
+        // Simulate some processing time by performing meaningless operations
+        // In a real scenario, this could be complex business logic, external calls, etc.
+        uint256 dummy = 0;
+        for (uint256 i = 0; i < 10; i++) {
+            dummy += offeredItems[itemId].price + block.timestamp + i;
+        }
     }
 
     /**
@@ -274,6 +300,7 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
         @param newTitle New title of the item being sold
         @param newDesc New description of the item being sold
         @param newPrice New price in Ether of the item being sold
+        @dev ⚠️ VULNERABLE: No protection against price manipulation during active purchases
      */
     function modifySale(uint256 itemId, string calldata newTitle, string calldata newDesc, uint256 newPrice) external {
         require(offeredItems[itemId].state == State.Selling, "Sale can't be modified");
@@ -281,6 +308,9 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
         require(bytes(newTitle).length > 0, "Title cannot be empty");
         require(bytes(newDesc).length > 0, "Description cannot be empty");
         require(offeredItems[itemId].seller == msg.sender, "Only the seller can modify the sale");   	
+        
+        // VULNERABILITY: No check for pending transactions or race conditions
+        // A seller can change the price while buyers are in the middle of a purchase
         
         // Update vault
         uint256 priceDifference;
@@ -292,12 +322,40 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
             vaultContract.doLock(msg.sender, priceDifference);
         }
 
-        // Update details
+        // Update details - This happens immediately without any locks
         offeredItems[itemId].title = newTitle;         
         offeredItems[itemId].description = newDesc;    
         offeredItems[itemId].price = newPrice;
 
         emit ModifyItem(itemId, newTitle);
+    }
+    
+    /**
+        @notice Quick price change function for sellers (VULNERABLE)
+        @param itemId ID of the item being modified
+        @param newPrice New price in Ether of the item being sold
+        @dev ⚠️ HIGHLY VULNERABLE: Allows instant price changes during purchases
+     */
+    function quickPriceChange(uint256 itemId, uint256 newPrice) external {
+        require(offeredItems[itemId].state == State.Selling, "Sale can't be modified");
+        require(newPrice > 0, "Price must be greater than 0");
+        require(offeredItems[itemId].seller == msg.sender, "Only the seller can modify the sale");
+        
+        // VULNERABILITY: No validation, no delays, no protection
+        // This creates a perfect race condition opportunity
+        uint256 oldPrice = offeredItems[itemId].price;
+        offeredItems[itemId].price = newPrice;
+        
+        // Update vault accordingly
+        if (oldPrice > newPrice) {
+            uint256 priceDifference = oldPrice - newPrice;
+            vaultContract.doUnlock(msg.sender, priceDifference);
+        } else if (oldPrice < newPrice) {
+            uint256 priceDifference = newPrice - oldPrice;
+            vaultContract.doLock(msg.sender, priceDifference);
+        }
+        
+        emit ModifyItem(itemId, offeredItems[itemId].title);
     }
 
     /**
