@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { create } from 'ipfs-http-client';
-import { FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI, FAILLAPOP_PROXY_ADDRESS } from '../contracts/config';
+import { CONTRACT_ADDRESSES, FAILLAPOP_SHOP_ABI, FAILLAPOP_VAULT_ABI } from '../contracts/config';
 import { Item, ItemState, Dispute, Sale } from '../types/Item';
 import { EthereumProvider } from '../types/ethereum';
 
@@ -60,22 +60,22 @@ export class ContractService {
           }
         }
         
-        this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI.abi, this.provider);
-        this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
+        this.contract = new ethers.Contract(CONTRACT_ADDRESSES.FP_PROXY, FAILLAPOP_SHOP_ABI.abi, this.provider);
+        this.vaultContract = new ethers.Contract(CONTRACT_ADDRESSES.FP_VAULT, FAILLAPOP_VAULT_ABI.abi, this.provider);
       } else {
         console.log('No Ethereum provider found, using read-only provider');
         this.provider = new ethers.providers.JsonRpcProvider('http://localhost:8545');
-        this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI.abi, this.provider);
-        this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
+        this.contract = new ethers.Contract(CONTRACT_ADDRESSES.FP_PROXY, FAILLAPOP_SHOP_ABI.abi, this.provider);
+        this.vaultContract = new ethers.Contract(CONTRACT_ADDRESSES.FP_VAULT, FAILLAPOP_VAULT_ABI.abi, this.provider);
       }
 
       console.log('Verifying contract deployment...');
-      const proxyCode = await this.provider.getCode(FAILLAPOP_PROXY_ADDRESS);
+      const proxyCode = await this.provider.getCode(CONTRACT_ADDRESSES.FP_PROXY);
       if (proxyCode === '0x') {
         throw new Error('Proxy contract not deployed at the specified address');
       }
 
-      const vaultCode = await this.provider.getCode(FAILLAPOP_VAULT_ADDRESS);
+      const vaultCode = await this.provider.getCode(CONTRACT_ADDRESSES.FP_VAULT);
       if (vaultCode === '0x') {
         throw new Error('Vault contract not deployed at the specified address');
       }
@@ -440,5 +440,23 @@ export class ContractService {
       console.error('Error getting item details:', error);
       return null;
     }
+  }
+
+  // Public method to get contract with signer for vulnerability testing
+  async getContractWithSigner(): Promise<ethers.Contract | null> {
+    if (!this.contract || typeof window.ethereum === 'undefined') return null;
+    
+    const provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = provider.getSigner();
+    return this.contract.connect(signer);
+  }
+
+  // Public method to get vault contract with signer
+  async getVaultContractWithSigner(): Promise<ethers.Contract | null> {
+    if (!this.vaultContract || typeof window.ethereum === 'undefined') return null;
+    
+    const provider = new ethers.providers.Web3Provider(window.ethereum as any);
+    const signer = provider.getSigner();
+    return this.vaultContract.connect(signer);
   }
 } 

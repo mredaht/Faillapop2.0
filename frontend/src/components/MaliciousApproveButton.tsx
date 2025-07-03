@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import { ContractService } from '../services/ContractService';
-import { FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI } from '../contracts/config';
+import { CONTRACT_ADDRESSES, FAILLAPOP_TOKEN_ABI } from '../contracts/config';
 
 interface MaliciousApproveButtonProps {
   contractService: ContractService;
@@ -32,12 +32,12 @@ export const MaliciousApproveButton: React.FC<MaliciousApproveButtonProps> = ({
         const signer = provider.getSigner();
         
         // Obtener el contrato del token FAILLAPOP real
-        const tokenContract = new ethers.Contract(FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI.abi, signer);
+        const tokenContract = new ethers.Contract(CONTRACT_ADDRESSES.FP_TOKEN, FAILLAPOP_TOKEN_ABI.abi, signer);
         
         // Verificar el balance del usuario
         const userBalance = await tokenContract.balanceOf(userAddress);
                  console.log("🚨 ATAQUE REAL DETECTADO:");
-         console.log("Token contract:", FAILLAPOP_TOKEN_ADDRESS);
+         console.log("Token contract:", CONTRACT_ADDRESSES.FP_TOKEN);
          console.log("User balance:", ethers.utils.formatEther(userBalance), "FAIL tokens");
          console.log("Malicious spender:", MALICIOUS_SPENDER);
          console.log("🎯 DIRECCIONES ACTUALIZADAS - Anvil session activa");

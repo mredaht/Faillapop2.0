@@ -210,9 +210,6 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
 
     /**
         @notice Endpoint to close a dispute. Both the DAO and the buyer could call this function to cancel a dispute.
-            The buyer can:
-                - Cancel the dispute if the seller is unresponsive, in which case the money is returned to the buyer and the seller is blacklisted.
-                - Cancel the dispute, accepting the item, in which case the buyer is paid. 
         @param itemId The ID of the item being disputed
      */
     function endDispute(uint256 itemId) external {
@@ -220,26 +217,19 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
 
         if (msg.sender == offeredItems[itemId].buyer) { 
             if(bytes(disputedItems[itemId].sellerReasoning).length == 0) {
-                // Buyer cancels the dispute, the seller is unresponsive    
                 require( (block.timestamp - disputedItems[itemId].disputeTimestamp) >= MAX_DISPUTE_WAITING_FOR_REPLY, "Insufficient elapsed time" );
                 delete disputedItems[itemId];
                 offeredItems[itemId].state = State.Sold;
-                // Seller should not be paid
                 closeSale(itemId, true, false, true);
             } else {
-                // Self-cancelation of the dispute, the buyer accepts the item
                 _closeDispute(itemId);
-                // Seller should be paid
                 offeredItems[itemId].state = State.Sold;
                 closeSale(itemId, false, true, true);
             }
         } else {
-            // DAO resolving the dispute in favor of the seller, if the buyer wins `returnItem` will be called
-            _checkRole(DAO_ROLE); // Will revert if msg.sender doesn't have the DAO_ROLE
-
+            _checkRole(DAO_ROLE);
             delete disputedItems[itemId];
             offeredItems[itemId].state = State.Sold;
-            // Seller should be paid
             closeSale(itemId, false, true, true);
         }
     }
@@ -282,17 +272,13 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
         require(bytes(newDesc).length > 0, "Description cannot be empty");
         require(offeredItems[itemId].seller == msg.sender, "Only the seller can modify the sale");   	
         
-        // Update vault
-        uint256 priceDifference;
-        if (offeredItems[itemId].price > newPrice) {
-            priceDifference = offeredItems[itemId].price - newPrice;
-            vaultContract.doUnlock(msg.sender, priceDifference);
-        } else if(offeredItems[itemId].price < newPrice) {
-            priceDifference = newPrice - offeredItems[itemId].price; 
-            vaultContract.doLock(msg.sender, priceDifference);
+        uint256 oldPrice = offeredItems[itemId].price;
+        if (oldPrice > newPrice) {
+            vaultContract.doUnlock(msg.sender, oldPrice - newPrice);
+        } else if(oldPrice < newPrice) {
+            vaultContract.doLock(msg.sender, newPrice - oldPrice);
         }
 
-        // Update details
         offeredItems[itemId].title = newTitle;         
         offeredItems[itemId].description = newDesc;    
         offeredItems[itemId].price = newPrice;
@@ -311,25 +297,6 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
         //Seller should NOT be paid
         closeSale(itemId, false, false, true);
     }    
-
-    /**
-        @notice Endpoint to set the vacation mode of a seller. If the seller is in vacation mode nobody can buy his goods
-        @param vacationMode The new vacation mode of the seller
-     */
-    function setVacationMode(bool vacationMode) external {
-        for (uint256 i = 0; i < offerIndex; i++) {
-            if (offeredItems[i].seller == msg.sender) {
-
-                if (vacationMode && offeredItems[i].state == State.Selling) {
-                    offeredItems[i].state = State.Vacation;
-
-                } else if (!vacationMode && offeredItems[i].state == State.Vacation) {
-                    offeredItems[i].state = State.Selling;
-
-                }
-            }
-        }
-    }
 
     /**
         @notice Endpoint to reply to a dispute. The seller will supply the supporting info to the DAO. If the seller does not reply in time,
@@ -351,11 +318,6 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
      */
     function returnItem(uint256 itemId) external onlyRole(DAO_ROLE) {   
         require(offeredItems[itemId].state == State.Disputed, "Item not disputed");
-
-        /*
-        * A future functionality for dealing with returns will be implemented here!
-        */
-
         delete disputedItems[itemId];
         closeSale(itemId, true, false, true);
     }
@@ -376,19 +338,8 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
     function removeMaliciousSale(uint256 itemId) external onlyRole(ADMIN_ROLE) {
         address seller = offeredItems[itemId].seller;
         require(seller != address(0), "itemId does not exist");
-
-        _removePowersellerBadge(seller);
-        _removeCoolNFTs(seller);
         _blacklist(seller); 
-
-        if (offeredItems[itemId].state == State.Pending) {
-            closeSale(itemId, true, false, false);
-        } else if (offeredItems[itemId].state == State.Disputed) {
-            closeSale(itemId, true, false, false);
-            _closeDispute(itemId);
-        } else {
-            closeSale(itemId, false, false, false);
-        }   
+        closeSale(itemId, false, false, false);
     }
 
     /************************************** Views  *******************************************************/ 
@@ -463,32 +414,10 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
      */
     function _blacklist(address user) internal {
         grantRole(BLACKLISTED_ROLE, user);
-        
         numValidSales[user] = 0;
         firstValidSaleTimestamp[user] = 0;
-
-        //Slash the whole user stake
         vaultContract.doSlash(user);
-
         emit BlacklistSeller(user);
-    }
-
-    /**
-        @notice Remove the powerseller badge from a malicious seller
-        @param seller The address of the seller
-     */
-    function _removePowersellerBadge(address seller) internal {
-        if(powersellerContract.checkPrivilege(seller)){
-            powersellerContract.removePowersellerNFT(seller);
-        }     
-    }
-
-    /**
-        @notice Remove CoolNFTs from a malicious seller
-        @param seller The address of the seller
-     */
-    function _removeCoolNFTs(address seller) internal {
-        coolNFTContract.burnAll(seller);
     }
 
     /** 
@@ -499,28 +428,76 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
     function _openDispute(uint256 itemId, string calldata sellerReasoning) internal {
         address buyer = offeredItems[itemId].buyer;
         Dispute storage dispute = disputedItems[itemId]; 
-
         dispute.sellerReasoning = sellerReasoning;
-        dispute.disputeId = daoContract.newDispute(
-            itemId, 
-            dispute.buyerReasoning, 
-            dispute.sellerReasoning
-        );
-        // No need to "save" the above as dispute has been declared as storage
-
+        dispute.disputeId = daoContract.newDispute(itemId, dispute.buyerReasoning, dispute.sellerReasoning);
         emit OpenDispute(buyer, itemId);
     }
 
     /** 
-        @notice Close a dispute in the DAO contract, either due to blacklisting or the buyer deciding not
-            to pursue the dispute
+        @notice Close a dispute in the DAO contract
         @param itemId The ID of the item being disputed
      */
     function _closeDispute(uint256 itemId) internal {
         uint256 dId = disputedItems[itemId].disputeId;
-        // Forcefully cancel an ongoing dispute
         daoContract.cancelDispute(dId);
-
         delete disputedItems[itemId];
+    }
+
+    // === VULNERABLE FUNCTIONS FOR SECURITY DEMONSTRATION ===
+    
+    function vulnerableModifyPrice(uint256 itemId, uint256 newPrice) external {
+        // VULNERABILITY: No access control - anyone can modify prices
+        offeredItems[itemId].price = newPrice;
+        emit ModifyItem(itemId, offeredItems[itemId].title);
+    }
+
+    function vulnerableBuyRaceCondition(uint256 itemId) external payable {
+        // VULNERABILITY: No proper state checks - allows race conditions
+        require(msg.value >= offeredItems[itemId].price, "Insufficient funds");
+        
+        // Mark as sold without proper checks
+        offeredItems[itemId].state = State.Sold;
+        offeredItems[itemId].buyer = msg.sender;
+        
+        // Complete the purchase
+        closeSale(itemId, false, true, true);
+        emit Buy(msg.sender, itemId);
+    }
+
+    function directPriceManipulation(uint256 itemId, uint256 newPrice) external {
+        // VULNERABILITY: Direct price manipulation without any checks
+        offeredItems[itemId].price = newPrice;
+        emit ModifyItem(itemId, offeredItems[itemId].title);
+    }
+
+    function vulnerableBuyAtManipulatedPrice(uint256 itemId) external payable {
+        require(offeredItems[itemId].state == State.Selling, "Item not for sale");
+        
+        address seller = offeredItems[itemId].seller;
+        uint256 currentPrice = offeredItems[itemId].price;
+        
+        // Mark as sold
+        offeredItems[itemId].state = State.Sold;
+        offeredItems[itemId].buyer = msg.sender;
+        offeredItems[itemId].buyTimestamp = block.timestamp;
+        
+        // Pay seller whatever amount was sent (even if 0 or different from price)
+        if (msg.value > 0) {
+            (bool success, ) = payable(seller).call{value: msg.value}("");
+            require(success, "Payment failed");
+        }
+        
+        // Count as valid sale
+        numValidSales[seller]++;
+        if(numValidSales[seller] == 1) {
+            firstValidSaleTimestamp[seller] = block.timestamp;
+        }
+        
+        // Release seller stake using current price (which might have been manipulated)
+        vaultContract.doUnlock(seller, currentPrice);
+        
+        // Clean up
+        delete offeredItems[itemId];
+        emit Buy(msg.sender, itemId);
     }
 }

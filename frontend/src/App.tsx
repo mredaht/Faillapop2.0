@@ -11,6 +11,7 @@ import { VulnerableNFTDisplay } from './components/VulnerableNFTDisplay';
 import { PhishingTestButton } from './components/PhishingTestButton';
 import { VulnerableAdminPanel } from './components/VulnerableAdminPanel';
 import QuickStake from './components/QuickStake';
+import VulnerabilitySelector from './components/VulnerabilitySelector';
 
 import { Item, ItemState } from './types/Item';
 import { ContractService } from './services/ContractService';
@@ -26,6 +27,7 @@ function App() {
   const [isBlacklisted, setIsBlacklisted] = useState(false);
   const [activeTab, setActiveTab] = useState<'marketplace' | 'purchases' | 'vault' | 'security'>('marketplace');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [showItemDetails, setShowItemDetails] = useState(false);
   
   // Get the first available item for security demonstrations
   const getSecurityDemoItem = (): Item | null => {
@@ -141,6 +143,7 @@ function App() {
 
   const handleItemClick = async (item: Item) => {
     setSelectedItem(item);
+    setShowItemDetails(false); // Reset to show vulnerability selector first
   };
 
   return (
@@ -230,16 +233,45 @@ function App() {
                     </div>
                   ) : (
                     <>
+                      {!selectedItem && (
+                        <div style={{
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          padding: '15px',
+                          borderRadius: '10px',
+                          color: 'white',
+                          margin: '20px 0',
+                          textAlign: 'center'
+                        }}>
+                                                     <h3>🔒 Security Testing</h3>
+                           <p>Click on any item below to test the contract's security measures! If tests fail, that's <strong>GOOD</strong> - it means the contract is secure!</p>
+                        </div>
+                      )}
+                      
                       <ItemList 
                         items={items} 
                         onBuyItem={handleItemClick}
                         userAddress={userAddress}
                       />
                       
-                      {selectedItem && (
+                      {/* Vulnerability Testing Section - only for normal marketplace items */}
+                      {selectedItem && !selectedItem.name.includes('VULNERABLE DEMO') && selectedItem.id !== 999 && !showItemDetails && (
+                        <VulnerabilitySelector
+                          contractService={contractService}
+                          userAddress={userAddress}
+                          selectedItem={selectedItem}
+                          onAttackComplete={loadItems}
+                          onShowDetails={() => setShowItemDetails(true)}
+                          onBack={() => setSelectedItem(null)}
+                        />
+                      )}
+                      
+                      {selectedItem && !selectedItem.name.includes('VULNERABLE DEMO') && selectedItem.id !== 999 && showItemDetails && (
                         <ItemDetails
                           item={selectedItem}
-                          onClose={() => setSelectedItem(null)}
+                          onClose={() => {
+                            setSelectedItem(null);
+                            setShowItemDetails(false);
+                          }}
                           onBuy={handleBuyItem}
                           onDispute={handleDispute}
                           onConfirmReceipt={handleConfirmReceipt}
