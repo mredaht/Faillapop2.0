@@ -291,13 +291,7 @@ function App() {
                     contractService={contractService}
                     userAddress={userAddress}
                   />
-                  
-                  {/* Vulnerabilidad 4: Token Drainer Real */}
-                  <RealTokenDrainer 
-                    contractService={contractService}
-                    userAddress={userAddress}
-                  />
-                  
+    
                   {/* Vulnerabilidad 5: Purchase Manipulation - Integrated in Marketplace */}
                   <div className="vulnerability-section">
                     <h3>🛒 Vulnerable Marketplace Item</h3>
