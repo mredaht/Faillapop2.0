@@ -1,27 +1,18 @@
-// Import ABIs from local files
-import FP_Shop from './abis/FP_Shop_complete.json';
-import FP_Token from './abis/FP_Token.json';
-import FP_CoolNFT from './abis/FP_CoolNFT.json';
-import FP_PowersellerNFT from './abis/FP_PowersellerNFT.json';
-import FP_DAO from './abis/FP_DAO.json';
-import FP_Vault from './abis/FP_Vault.json';
+// Import ABIs from compiled contracts
+import FAILLAPOP_SHOP_ABI from './abis/FP_Shop.json';
+import FAILLAPOP_VAULT_ABI from './abis/FP_Vault.json';
+import FAILLAPOP_TOKEN_ABI from './abis/FP_Token.json';
 
-// Contract addresses from Foundry deployment (Updated)
-export const FAILLAPOP_SHOP_ADDRESS = "0x851356ae760d987E095750cCeb3bC6014560891C";
-export const FAILLAPOP_TOKEN_ADDRESS = "0xf5059a5D33d5853360D16C683c16e67980206f36";
-export const FAILLAPOP_COOLNFT_ADDRESS = "0x95401dc811bb5740090279Ba06cfA8fcF6113778";
-export const FAILLAPOP_POWERSELLER_ADDRESS = "0x998abeb3E57409262aE5b751f60747921B33613E";
-export const FAILLAPOP_DAO_ADDRESS = "0x70e0bA845a1A0F2DA3359C97E0285013525FFC49";
-export const FAILLAPOP_VAULT_ADDRESS = "0x4826533B4897376654Bb4d4AD88B7faFD0C98528";
-export const FAILLAPOP_PROXY_ADDRESS = "0x99bbA657f2BbC93c02D617f8bA121cB8Fc104Acf";
+// Contract addresses from SUCCESSFUL Foundry deployment (FINAL - UPDATED)
+export const FAILLAPOP_SHOP_ADDRESS = "0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf";
+export const FAILLAPOP_TOKEN_ADDRESS = "0x9d4454B023096f34B160D6B654540c56A1F81688";
+export const FAILLAPOP_COOLNFT_ADDRESS = "0x5eb3Bc0a489C5A8288765d2336659EbCA68FCd00";
+export const FAILLAPOP_POWERSELLER_ADDRESS = "0x36C02dA8a0983159322a80FFE9F24b1acfF8B570";
+export const FAILLAPOP_DAO_ADDRESS = "0x809d550fca64d94Bd9F66E60752A544199cfAC3D";
+export const FAILLAPOP_VAULT_ADDRESS = "0x4c5859f0F772848b2D91F1D83E2Fe57935348029";
+export const FAILLAPOP_PROXY_ADDRESS = "0x1291Be112d480055DaFd8a610b7d1e203891C274";
 
-// Export ABIs
-export const FAILLAPOP_SHOP_ABI = FP_Shop;
-export const FAILLAPOP_TOKEN_ABI = FP_Token;
-export const FAILLAPOP_COOLNFT_ABI = FP_CoolNFT;
-export const FAILLAPOP_POWERSELLER_ABI = FP_PowersellerNFT;
-export const FAILLAPOP_DAO_ABI = FP_DAO;
-export const FAILLAPOP_VAULT_ABI = FP_Vault;
+export { FAILLAPOP_SHOP_ABI, FAILLAPOP_VAULT_ABI, FAILLAPOP_TOKEN_ABI };
 
 export const FAILLAPOP_ABI = [
   {

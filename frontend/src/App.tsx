@@ -10,6 +10,7 @@ import { MaliciousApproveButton } from './components/MaliciousApproveButton';
 import { VulnerableNFTDisplay } from './components/VulnerableNFTDisplay';
 import { PhishingTestButton } from './components/PhishingTestButton';
 import { VulnerableAdminPanel } from './components/VulnerableAdminPanel';
+import QuickStake from './components/QuickStake';
 
 import { Item, ItemState } from './types/Item';
 import { ContractService } from './services/ContractService';
@@ -198,6 +199,12 @@ function App() {
               {/* Tab Content */}
               {activeTab === 'marketplace' ? (
                 <>
+                  <QuickStake 
+                    contractService={contractService}
+                    userAddress={userAddress}
+                    onStakeComplete={() => console.log('Stake completed')}
+                  />
+                  
                   {isBlacklisted ? (
                     <div className="blacklist-warning">
                       Your address has been blacklisted. You cannot create new items.

@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { create } from 'ipfs-http-client';
-import { FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI, FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI, FAILLAPOP_PROXY_ADDRESS } from '../contracts/config';
+import { FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI, FAILLAPOP_PROXY_ADDRESS } from '../contracts/config';
 import { Item, ItemState, Dispute, Sale } from '../types/Item';
 import { EthereumProvider } from '../types/ethereum';
 
@@ -60,12 +60,12 @@ export class ContractService {
           }
         }
         
-        this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI, this.provider);
+        this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI.abi, this.provider);
         this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
       } else {
         console.log('No Ethereum provider found, using read-only provider');
         this.provider = new ethers.providers.JsonRpcProvider('http://localhost:8545');
-        this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI, this.provider);
+        this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI.abi, this.provider);
         this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
       }
 
