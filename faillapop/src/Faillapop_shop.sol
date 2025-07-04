@@ -159,13 +159,22 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
         @notice Endpoint to buy an item
         @param itemId The ID of the item being bought
         @dev The user must send the exact amount of Ether to buy the item
-        @dev ⚠️ VULNERABLE: Race condition and price manipulation possible
+        @dev ⚠️ HIGHLY VULNERABLE: Multiple race conditions and price manipulation possible
      */
     function doBuy(uint256 itemId) external payable {
         require(offeredItems[itemId].seller != address(0), "itemId does not exist");
-        require(offeredItems[itemId].state == State.Selling, "Item cannot be bought");
         
-        // VULNERABILITY 1: Price can be changed between this check and the state update
+        // VULNERABILITY 1: Store initial state for checking, but don't enforce it atomically
+        State initialState = offeredItems[itemId].state;
+        
+        // VULNERABILITY 2: Allow purchases even if item is already pending (weak check)
+        // This allows multiple buyers to "win" the race condition
+        require(
+            initialState == State.Selling || initialState == State.Pending, 
+            "Item cannot be bought"
+        );
+        
+        // VULNERABILITY 3: Price can be changed between this check and the state update
         // Store the price at the time of check (but don't use it for validation)
         uint256 priceAtCheck = offeredItems[itemId].price;
         
@@ -175,30 +184,55 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
             "Seller is blacklisted"
         );
         
-        // VULNERABILITY 2: Simulate network delay or complex computation
-        // This creates a window for race conditions and price manipulation
+        // VULNERABILITY 4: Simulate network delay or complex computation
+        // This creates a LONG window for race conditions and price manipulation
         _simulateProcessingDelay(itemId);
         
-        // VULNERABILITY 3: Multiple buyers can pass the above checks before state changes
-        // No atomic check-and-set operation
-        offeredItems[itemId].buyer = msg.sender;
-        offeredItems[itemId].state = State.Pending;
-        offeredItems[itemId].buyTimestamp = block.timestamp;
+        // VULNERABILITY 5: Check state again, but allow multiple buyers if it's still "reasonable"
+        // This creates a race condition where multiple transactions can proceed
+        if (offeredItems[itemId].state == State.Selling) {
+            // First buyer sets it to Pending
+            offeredItems[itemId].buyer = msg.sender;
+            offeredItems[itemId].state = State.Pending;
+            offeredItems[itemId].buyTimestamp = block.timestamp;
+        } else if (offeredItems[itemId].state == State.Pending) {
+            // VULNERABILITY 6: Allow "co-buyers" - multiple people can buy the same item!
+            // This is a critical race condition vulnerability
+            // Previous buyer gets overwritten - last transaction wins!
+            offeredItems[itemId].buyer = msg.sender;
+            offeredItems[itemId].buyTimestamp = block.timestamp;
+            // State remains Pending, but buyer changes!
+        }
         
+        // VULNERABILITY 7: Always emit Buy event, even for race condition "losers"
+        // This creates confusion and allows multiple "successful" purchases
         emit Buy(msg.sender, itemId);
     }
     
     /**
         @notice Simulates processing delay to create race condition window
         @param itemId The ID of the item being processed
-        @dev This creates a vulnerability window where price can be manipulated
+        @dev This creates a LONG vulnerability window where price can be manipulated
+        @dev ⚠️ VULNERABILITY: Extended processing time allows multiple transactions to proceed
      */
     function _simulateProcessingDelay(uint256 itemId) internal view {
         // Simulate some processing time by performing meaningless operations
         // In a real scenario, this could be complex business logic, external calls, etc.
         uint256 dummy = 0;
-        for (uint256 i = 0; i < 10; i++) {
+        
+        // VULNERABILITY: Much longer processing time to create bigger race condition window
+        for (uint256 i = 0; i < 100; i++) {
             dummy += offeredItems[itemId].price + block.timestamp + i;
+            // Additional nested loop to create more delay
+            for (uint256 j = 0; j < 10; j++) {
+                dummy += offeredItems[itemId].price * j + block.number + i;
+            }
+        }
+        
+        // Store dummy value to prevent optimization (though it doesn't matter much)
+        // This simulates expensive computation that takes time
+        if (dummy > 0) {
+            // Do nothing, just prevent optimization
         }
     }
 

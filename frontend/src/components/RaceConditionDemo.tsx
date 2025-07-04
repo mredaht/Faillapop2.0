@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ContractService } from '../services/ContractService';
 import { ethers } from 'ethers';
 import { ItemState } from '../types/Item';
 import './RaceConditionDemo.css';
+import { Item } from '../types/Item';
 
 interface RaceConditionDemoProps {
   contractService: ContractService;
@@ -18,47 +19,21 @@ interface AttackScenario {
 }
 
 const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, userAddress }) => {
-  const [availableItems, setAvailableItems] = useState<any[]>([]);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [availableItems, setAvailableItems] = useState<Item[]>([]);
   const [attackScenario, setAttackScenario] = useState<AttackScenario | null>(null);
+  const [priceManipulationValue, setPriceManipulationValue] = useState<string>('');
   const [isAttacking, setIsAttacking] = useState(false);
   const [attackResults, setAttackResults] = useState<any[]>([]);
-  const [priceManipulationValue, setPriceManipulationValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const scenarios: AttackScenario[] = [
-    {
-      id: 'race_multiple_buyers',
-      name: 'Race Condition: Multiple Buyers',
-      description: 'Simulate multiple buyers trying to purchase the same item simultaneously',
-      type: 'race',
-      enabled: true
-    },
-    {
-      id: 'price_manipulation',
-      name: 'Price Manipulation Attack',
-      description: 'Change item price while purchase transaction is being processed',
-      type: 'price',
-      enabled: true
-    },
-    {
-      id: 'race_price_combo',
-      name: 'Combined Race + Price Attack',
-      description: 'Combine race conditions with price manipulation for maximum chaos',
-      type: 'race',
-      enabled: true
-    }
+    { id: 'race_multiple_buyers', name: 'Race Condition Attack', description: 'Multiple buyers attempt to purchase the same item simultaneously', type: 'race', enabled: true },
+    { id: 'price_manipulation', name: 'Price Manipulation', description: 'Change item price during active transactions', type: 'price', enabled: true },
   ];
 
-  useEffect(() => {
-    if (userAddress) {
-      console.log('🔍 DEBUG - useEffect triggered with userAddress:', userAddress);
-      loadAvailableItems();
-    }
-  }, [userAddress]);
-
-  const loadAvailableItems = async () => {
+  const loadAvailableItems = useCallback(async () => {
     console.log('🔍 DEBUG - ContractService initialized:', !!contractService);
     
     if (!contractService) {
@@ -77,64 +52,183 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
       // For race condition and price manipulation demos, we need items that can be attacked
       // This includes:
       // 1. Items from other users (as buyers attacking sellers)
-      // 2. Items from current user (as malicious seller manipulating own prices)
-      const attackableItems = allItems.filter(item => {
+      // 2. Items from the user themselves (as sellers manipulating their own prices)
+      // 3. Items in "Selling" state that can be purchased
+      
+      const filteredItems = allItems.filter(item => {
         const isSellingState = item.state === ItemState.Selling;
-        const isUserOwned = item.seller.toLowerCase() === userAddress.toLowerCase();
-        const isOtherUserOwned = item.seller.toLowerCase() !== userAddress.toLowerCase();
-        
-        console.log(`Item ${item.id} (${item.name}): state=${item.state} (ItemState.Selling=${ItemState.Selling}, isSellingState=${isSellingState}), isUserOwned=${isUserOwned}, isOtherUserOwned=${isOtherUserOwned}`);
-        
-        // Include items in Selling state (both user's own and others')
+        console.log(`Item ${item.id}: state=${item.state}, selling=${isSellingState}`);
         return isSellingState;
       });
       
-      console.log('Attackable items after filtering:', attackableItems.length);
-      console.log('Attackable items:', attackableItems);
+      console.log('Filtered items available for attack:', filteredItems.length);
+      console.log('Items data:', filteredItems);
       
-      setAvailableItems(attackableItems);
-    } catch (error: any) {
+      setAvailableItems(filteredItems);
+      
+      if (filteredItems.length === 0) {
+        console.log('No items available for attack demos');
+        setError('No items available for demonstration. Create some items in the marketplace first!');
+      } else {
+        setError(null);
+      }
+    } catch (error) {
       console.error('Error loading items:', error);
-      setError(error.message);
+      setError('Failed to load items');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [contractService, userAddress]);
+
+  useEffect(() => {
+    if (contractService) {
+      loadAvailableItems();
+    }
+  }, [contractService, userAddress, loadAvailableItems]);
 
   const executeRaceConditionAttack = async (itemId: number) => {
     console.log('🚨 EXECUTING RACE CONDITION ATTACK');
     console.log(`Target Item ID: ${itemId}`);
     
     const results: any[] = [];
-    const promises: Promise<any>[] = [];
+    const startTime = Date.now();
+    
+    // Add initial explanation
+    results.push({
+      type: 'explanation',
+      status: 'info',
+      message: '🏁 Starting race condition attack: 5 buyers will attempt to purchase the same item simultaneously. Only one should succeed!'
+    });
 
-    // Launch 5 simultaneous purchase attempts
+    // Check initial item state
+    try {
+      const initialItem = await contractService.getItemDetails(itemId);
+      if (initialItem) {
+        results.push({
+          type: 'initial_state',
+          status: 'info',
+          message: `📊 Initial item state: ${initialItem.state === 1 ? 'Selling' : 'Other'} | Price: ${initialItem.price} ETH`
+        });
+      }
+    } catch (error) {
+      console.log('Could not fetch initial state:', error);
+    }
+
+    // Create promises with timing information
+    const promises: Promise<any>[] = [];
+    
     for (let i = 0; i < 5; i++) {
+      const attemptStartTime = Date.now();
       promises.push(
         contractService.buyItem(itemId)
           .then((tx: any) => {
-            console.log(`Purchase attempt ${i + 1} successful:`, tx);
-            return { attempt: i + 1, status: 'success', tx };
+            const duration = Date.now() - attemptStartTime;
+            console.log(`✅ Purchase attempt ${i + 1} successful in ${duration}ms:`, tx);
+            return { 
+              attempt: i + 1, 
+              status: 'success', 
+              tx,
+              timing: {
+                started: attemptStartTime - startTime,
+                duration: duration
+              },
+              message: `Transaction ${i + 1} won the race! 🏆`
+            };
           })
           .catch((error: any) => {
-            console.log(`Purchase attempt ${i + 1} failed:`, error.message);
-            return { attempt: i + 1, status: 'failed', error: error.message };
+            const duration = Date.now() - attemptStartTime;
+            console.log(`❌ Purchase attempt ${i + 1} failed in ${duration}ms:`, error.message);
+            
+            // Analyze the error to provide better feedback
+            let analysisMessage = '';
+            if (error.message.includes('cannot be bought')) {
+              analysisMessage = `Lost the race - item already purchased by another buyer 🏃‍♂️`;
+            } else if (error.message.includes('Incorrect amount')) {
+              analysisMessage = `Price validation failed - someone may have changed the price 💰`;
+            } else if (error.message.includes('revert')) {
+              analysisMessage = `Transaction reverted - likely due to state change 🔄`;
+            } else {
+              analysisMessage = `Network or gas error ⛽`;
+            }
+            
+            return { 
+              attempt: i + 1, 
+              status: 'failed', 
+              error: error.message,
+              timing: {
+                started: attemptStartTime - startTime,
+                duration: duration
+              },
+              message: analysisMessage
+            };
           })
       );
     }
 
+    console.log('🚀 All 5 purchase attempts launched simultaneously...');
+    
     try {
+      // Wait for all promises to settle
       const allResults = await Promise.allSettled(promises);
+      const totalTime = Date.now() - startTime;
+      
+      // Process results with analysis
+      let successCount = 0;
+      let failureCount = 0;
+      
       allResults.forEach((result, index) => {
-        results.push({
-          attempt: index + 1,
-          status: result.status,
-          value: result.status === 'fulfilled' ? result.value : result.reason
-        });
+        const resultData = result.status === 'fulfilled' ? result.value : result.reason;
+        results.push(resultData);
+        
+        if (resultData.status === 'success') {
+          successCount++;
+        } else {
+          failureCount++;
+        }
       });
+      
+      // Add summary analysis
+      results.push({
+        type: 'race_analysis',
+        status: successCount > 1 ? 'vulnerability' : (successCount === 1 ? 'success' : 'info'),
+        message: `🎯 Race Results: ${successCount} succeeded, ${failureCount} failed in ${totalTime}ms total`
+      });
+      
+      if (successCount > 1) {
+        results.push({
+          type: 'explanation',
+          status: 'vulnerability',
+          message: `🚨 VULNERABILITY DEMONSTRATED: ${successCount} transactions succeeded! This vulnerable contract allows multiple buyers to purchase the same item. The last successful transaction overwrites previous buyers, but all paid!`
+        });
+      } else if (successCount === 1) {
+        results.push({
+          type: 'explanation',
+          status: 'success',
+          message: '✅ Only one transaction succeeded this time. However, the contract is still vulnerable - multiple successes are possible due to the weak state checks and race condition windows.'
+        });
+      } else {
+        results.push({
+          type: 'explanation',
+          status: 'info',
+          message: '❓ All transactions failed - this might indicate network issues, insufficient funds, or the item was already sold by another transaction.'
+        });
+      }
+      
+      // Add vulnerability explanation
+      results.push({
+        type: 'education',
+        status: 'vulnerability',
+        message: '📚 VULNERABILITY ANALYSIS: This contract allows multiple buyers to pass the state checks (State.Selling OR State.Pending) and purchase the same item. The vulnerability window is extended by the processing delay, and the final buyer overwrites previous ones.'
+      });
+      
     } catch (error: any) {
       console.error('Race condition attack failed:', error);
-      results.push({ type: 'error', status: 'failed', error: error.message });
+      results.push({ 
+        type: 'error', 
+        status: 'failed', 
+        error: error.message,
+        message: 'Attack execution failed unexpectedly'
+      });
     }
 
     return results;
@@ -243,46 +337,6 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
     }
   };
 
-  const executeCombinedAttack = async (itemId: number, newPrice: string) => {
-    console.log('🚨 EXECUTING COMBINED RACE + PRICE ATTACK');
-    
-    const results: any[] = [];
-    
-    try {
-      // First, change the price to create confusion
-      const priceInWei = ethers.utils.parseEther(newPrice);
-      
-      // Launch price manipulation and race condition simultaneously
-      const priceChangePromise = contractService.quickPriceChange(itemId, priceInWei)
-        .then((tx) => ({ type: 'price_change', status: 'success', tx }))
-        .catch((error) => ({ type: 'price_change', status: 'failed', error: error.message }));
-
-      // Launch multiple purchases with slight delays
-      const purchasePromises: Promise<any>[] = [];
-      for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-          purchasePromises.push(
-            contractService.buyItem(itemId)
-              .then((tx: any) => ({ type: 'purchase', index: i + 1, status: 'success', tx }))
-              .catch((error: any) => ({ type: 'purchase', index: i + 1, status: 'failed', error: error.message }))
-          );
-        }, i * 500); // Stagger the purchases
-      }
-
-      const allPromises = [priceChangePromise, ...purchasePromises];
-      const allResults = await Promise.allSettled(allPromises);
-      
-      return allResults.map((result, index) => ({
-        index: index + 1,
-        status: result.status,
-        value: result.status === 'fulfilled' ? result.value : result.reason
-      }));
-    } catch (error: any) {
-      console.error('Combined attack failed:', error);
-      return [{ type: 'attack', status: 'failed', error: error.message }];
-    }
-  };
-
   const handleAttackExecution = async () => {
     if (!selectedItem || !attackScenario) return;
 
@@ -302,13 +356,6 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
             return;
           }
           results = await executePriceManipulationAttack(selectedItem.id, priceManipulationValue);
-          break;
-        case 'race_price_combo':
-          if (!priceManipulationValue) {
-            alert('Please enter a price for manipulation');
-            return;
-          }
-          results = await executeCombinedAttack(selectedItem.id, priceManipulationValue);
           break;
         default:
           console.error('Unknown attack scenario');
@@ -336,16 +383,12 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
           Use this for educational purposes only!
         </p>
         <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '0.9rem' }}>
-          <strong>📋 How to test:</strong>
-          <br />• <strong>Your Own Items:</strong> Test as a malicious seller manipulating prices during transactions
-          <br />• <strong>Other Users' Items:</strong> Test as a buyer attempting attacks (will show security protection)
-          <br />• <strong>Race Conditions:</strong> Multiple simultaneous purchases on the same item
-          <br />• Go to "🛒 Marketplace" tab to create items if none are available
+          <strong>📋 How to test Race Conditions:</strong>
           <br />
-          <br /><strong>💡 Realistic Scenarios:</strong>
-          <br />• Seller changing price while buyer is purchasing
-          <br />• Multiple buyers racing to buy limited items
-          <br />• Price manipulation during network delays
+          <br />• <strong>Race Condition Attack:</strong> Launches 5 simultaneous purchase attempts on the same item
+          <br />• <strong>Expected Result:</strong> Only 1 should succeed (the "winner"), others should fail
+          <br />• <strong>Vulnerability:</strong> The timing window where multiple transactions can pass initial checks
+          <br />• <strong>Price Manipulation:</strong> Change price during active transactions (owners only)
         </div>
       </div>
 
@@ -369,16 +412,14 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
           </button>
           {isLoading ? (
             <div className="loading">Loading items...</div>
+          ) : error ? (
+            <div className="error-message" style={{ color: '#e74c3c', padding: '1rem', background: 'rgba(231, 76, 60, 0.1)', borderRadius: '4px' }}>
+              {error}
+            </div>
           ) : availableItems.length === 0 ? (
             <div className="no-items">
               <p>No items available for attack.</p>
-              <div style={{ marginTop: '1rem', padding: '1rem', background: '#f0f0f0', borderRadius: '8px', fontSize: '0.9rem' }}>
-                <strong>Debug Info:</strong>
-                <br />• Check browser console for detailed logs
-                <br />• Make sure you have items in "Selling" state
-                <br />• Items you own will not appear here
-                <br />• Current user: {userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : 'Not connected'}
-              </div>
+             
             </div>
           ) : (
             <div className="items-grid">
@@ -431,7 +472,7 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
           </div>
         </div>
 
-        {attackScenario && (attackScenario.type === 'price' || attackScenario.id === 'race_price_combo') && (
+        {attackScenario && attackScenario.type === 'price' && (
           <div className="price-manipulation-config">
             <h3>3. Configure Price Manipulation</h3>
             <div className="form-group">
@@ -460,40 +501,58 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
         </div>
 
         {attackResults.length > 0 && (
-          <div className="attack-results">
-            <h3>Attack Results</h3>
-            <div className="results-container">
-              {attackResults.map((result, index) => (
-                <div key={index} className={`result ${result.status}`}>
-                  <div className="result-header">
-                    <span className="result-type">{result.type || 'Transaction'}</span>
-                    <span className="result-status">{result.status}</span>
-                  </div>
-                  <div className="result-details">
-                    {result.status === 'success' && result.tx && (
-                      <div>
-                        <strong>Transaction Hash:</strong> {result.tx.hash}
-                      </div>
-                    )}
-                    {result.status === 'failed' && result.error && (
-                      <div>
-                        <strong>Error:</strong> {result.error}
-                      </div>
-                    )}
-                    {result.index && (
-                      <div>
-                        <strong>Attempt:</strong> {result.index}
-                      </div>
-                    )}
-                    {result.message && (
-                      <div>
-                        <strong>Message:</strong> {result.message}
-                      </div>
-                    )}
-                  </div>
+          <div className="results-container">
+            <h4>🔍 Attack Results</h4>
+            {attackResults.map((result, index) => (
+              <div key={index} className={`result ${result.status}`}>
+                <div className="result-header">
+                  <span className="result-type">
+                    {result.type === 'explanation' ? '📚' : 
+                     result.type === 'education' ? '🎓' : 
+                     result.type === 'race_analysis' ? '📊' : 
+                     result.type === 'initial_state' ? '🏁' : 
+                     result.attempt ? `#${result.attempt}` : 
+                     result.index ? `#${result.index}` : 
+                     result.type}
+                  </span>
+                  <span className={`result-status ${result.status}`}>
+                    {result.status.toUpperCase()}
+                  </span>
+                  {result.timing && (
+                    <span className="result-timing">
+                      {result.timing.duration}ms
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
+                <div className="result-details">
+                  {result.message && (
+                    <div className="result-message">
+                      <strong>Result:</strong> {result.message}
+                    </div>
+                  )}
+                  {result.error && (
+                    <div>
+                      <strong>Error:</strong> {result.error}
+                    </div>
+                  )}
+                  {result.tx && (
+                    <div>
+                      <strong>Transaction:</strong> {result.tx.hash?.slice(0, 10)}...
+                    </div>
+                  )}
+                  {result.timing && (
+                    <div className="timing-info">
+                      <strong>Timing:</strong> Started at {result.timing.started}ms, took {result.timing.duration}ms
+                    </div>
+                  )}
+                  {result.value && typeof result.value === 'object' && (
+                    <div>
+                      <strong>Details:</strong> {JSON.stringify(result.value, null, 2)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
