@@ -1,8 +1,13 @@
 .App {
-  text-align: center;
   min-height: 100vh;
-  background-color: #282c34;
-  color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.App-main {
+  flex: 1;
+  padding: 0;
+  margin: 0;
 }
 
 .App-logo {
@@ -16,19 +21,6 @@
   }
 }
 
-.App-header {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-}
-
-.App-link {
-  color: #61dafb;
-}
-
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
@@ -38,40 +30,87 @@
   }
 }
 
-.App-main {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+/* Estilos específicos para componentes de la app que complementan global.css */
+.error-message {
+  color: var(--danger);
+  margin-top: var(--space-4);
+  font-size: 0.9rem;
+  background-color: var(--danger-light);
+  padding: var(--space-4);
+  border-radius: 8px;
+  border: 1px solid var(--danger);
+  font-weight: 500;
 }
 
+/* Ajustes específicos para la aplicación */
 .wallet-connect {
-  margin: 2rem 0;
+  gap: var(--space-4);
 }
 
 .connect-button {
-  background-color: #61dafb;
-  color: #282c34;
+  background-color: var(--primary);
+  color: var(--text-white);
   border: none;
-  padding: 0.8rem 1.5rem;
-  font-size: 1.1rem;
+  padding: var(--space-4) var(--space-6);
+  font-size: 1rem;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  min-height: 48px;
 }
 
 .connect-button:hover {
-  background-color: #4fa8c7;
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .wallet-info {
-  background-color: rgba(97, 218, 251, 0.1);
-  padding: 1rem;
+  background-color: var(--primary-light);
+  padding: var(--space-4);
   border-radius: 8px;
-  margin-top: 1rem;
+  margin-top: var(--space-4);
+  border: 1px solid var(--primary);
 }
 
-.error-message {
-  color: #ff6b6b;
-  margin-top: 1rem;
-  font-size: 0.9rem;
+.wallet-info p {
+  color: var(--primary);
+  margin: var(--space-2) 0;
+  font-weight: 500;
+}
+
+/* Ajustes para mejor espaciado en componentes específicos */
+.App .container {
+  padding: 0 var(--space-6);
+}
+
+/* Espaciado mejorado para la navegación */
+.App .header {
+  margin-bottom: var(--space-8);
+}
+
+.App .main-content {
+  padding: var(--space-10) 0 var(--space-16) 0;
+}
+
+/* Responsive específico para App */
+@media (max-width: 768px) {
+  .App .container {
+    padding: 0 var(--space-4);
+  }
+  
+  .App .main-content {
+    padding: var(--space-6) 0 var(--space-12) 0;
+  }
+  
+  .connect-button {
+    padding: var(--space-3) var(--space-5);
+    font-size: 0.9rem;
+  }
+  
+  .wallet-info {
+    padding: var(--space-3);
+    margin-top: var(--space-3);
+  }
 }

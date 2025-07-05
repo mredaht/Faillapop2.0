@@ -191,9 +191,11 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate, contractService, user
         {error && <div className="error-message">❌ {error}</div>}
         {successMessage && <div className="success-message">✅ {successMessage}</div>}
 
-        <button type="submit" disabled={isLoading} className="create-button">
-          {isLoading ? 'Creating...' : 'Create Item'}
-        </button>
+        <div className="button-group">
+          <button type="submit" disabled={isLoading} className="button button-primary">
+            {isLoading ? 'Creating...' : 'Create Item'}
+          </button>
+        </div>
       </form>
     </div>
   );

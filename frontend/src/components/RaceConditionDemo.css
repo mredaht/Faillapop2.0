@@ -82,9 +82,11 @@
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   padding: 1.5rem;
+  padding-bottom: 4rem;
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
+  min-height: 200px;
 }
 
 .attack-item:hover {
@@ -130,14 +132,16 @@
 
 .scenario-badge {
   position: absolute;
-  bottom: 10px;
-  left: 10px;
-  padding: 0.4rem 0.8rem;
-  border-radius: 16px;
+  bottom: 12px;
+  left: 12px;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
   font-size: 0.8rem;
   font-weight: bold;
   text-align: center;
   color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 10;
 }
 
 .scenario-badge.owned {
@@ -150,6 +154,7 @@
 
 .scenario-explanation {
   margin-top: 1rem;
+  margin-bottom: 3rem;
   padding: 0.5rem;
   background: rgba(52, 152, 219, 0.1);
   border-radius: 4px;

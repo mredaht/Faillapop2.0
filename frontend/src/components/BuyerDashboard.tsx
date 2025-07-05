@@ -7,6 +7,18 @@ interface BuyerDashboardProps {
   contractService: ContractService;
 }
 
+// Helper function to get CSS class for status badge
+const getStatusBadgeClass = (state: number): string => {
+  switch (state) {
+    case 1: return 'available';      // Selling
+    case 2: return 'pending';        // Pending 
+    case 3: return 'disputed';       // Disputed
+    case 4: return 'sold';           // Sold
+    case 5: return 'vacation';       // Vacation
+    default: return 'undefined';     // Undefined/Unknown
+  }
+};
+
 export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({ userAddress, contractService }) => {
   const [buyerItems, setBuyerItems] = useState<Item[]>([]);
   const [totalSpent, setTotalSpent] = useState<string>('0');
@@ -171,7 +183,11 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({ userAddress, con
                 <p className="price">{item.price} ETH</p>
                 <p className="seller">Seller: {item.seller.slice(0, 6)}...{item.seller.slice(-4)}</p>
                 
-                <div className="status-badge" style={{ backgroundColor: ItemStateHelpers.getStateColor(item.state) }}>
+                {/* Enhanced status badge */}
+                <div 
+                  className={`status-badge ${getStatusBadgeClass(item.state)}`}
+                  style={{ backgroundColor: ItemStateHelpers.getStateColor(item.state) }}
+                >
                   {ItemStateHelpers.getStateLabel(item.state)}
                 </div>
                 

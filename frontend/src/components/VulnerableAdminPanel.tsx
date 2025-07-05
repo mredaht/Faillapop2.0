@@ -357,7 +357,7 @@ export const VulnerableAdminPanel: React.FC<VulnerableAdminPanelProps> = ({
   return (
     <div className="vulnerable-admin-panel">
       <div className="vulnerability-header">
-        <h3>🚨 Vulnerability 3: Admin Panel Bypass + IDOR</h3>
+        <h3>🚨 Vulnerability: Admin Panel Bypass + IDOR</h3>
         <div className="vulnerability-description">
           <p><strong>Target:</strong> Real Anvil user data & authorization</p>
           <p><strong>Attack Vector:</strong> Client-side bypass + Direct object reference</p>

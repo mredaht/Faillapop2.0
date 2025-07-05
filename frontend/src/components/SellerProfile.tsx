@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
 import { Item, ItemState, ItemStateHelpers } from '../types/Item';
 import { ContractService } from '../services/ContractService';
 
@@ -7,6 +6,18 @@ interface SellerProfileProps {
   userAddress: string;
   contractService: ContractService;
 }
+
+// Helper function to get CSS class for status badge
+const getStatusBadgeClass = (state: number): string => {
+  switch (state) {
+    case 1: return 'available';      // Selling
+    case 2: return 'pending';        // Pending 
+    case 3: return 'disputed';       // Disputed
+    case 4: return 'sold';           // Sold
+    case 5: return 'vacation';       // Vacation
+    default: return 'undefined';     // Undefined/Unknown
+  }
+};
 
 export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contractService }) => {
   const [sellerItems, setSellerItems] = useState<Item[]>([]);
@@ -56,6 +67,18 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
     }
   };
 
+  const handleVacationMode = async () => {
+    try {
+      setError(null);
+      await contractService.setVacationMode(!isVacationMode);
+      setIsVacationMode(!isVacationMode);
+      await loadSellerData();
+    } catch (error) {
+      console.error('Error toggling vacation mode:', error);
+      setError('Error toggling vacation mode');
+    }
+  };
+
   const handleDisputeReply = async (itemId: number) => {
     const reply = disputeReply[itemId];
     if (!reply) return;
@@ -71,33 +94,6 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
       setError('Error replying to dispute');
     } finally {
       setActionLoading(null);
-    }
-  };
-
-  // Note: returnItem can only be called by DAO, not by regular users
-  // This function is commented out as it's not accessible to sellers
-  // const handleReturnItem = async (itemId: number) => {
-  //   try {
-  //     setActionLoading(itemId);
-  //     setError(null);
-  //     await contractService.returnItem(itemId);
-  //     await loadSellerData();
-  //   } catch (error) {
-  //     console.error('Error returning item:', error);
-  //     setError('Error returning item');
-  //   } finally {
-  //     setActionLoading(null);
-  //   }
-  // };
-
-  const handleVacationMode = async () => {
-    try {
-      setError(null);
-      await contractService.setVacationMode(!isVacationMode);
-      setIsVacationMode(!isVacationMode);
-    } catch (error) {
-      console.error('Error setting vacation mode:', error);
-      setError('Error setting vacation mode');
     }
   };
 
@@ -151,7 +147,11 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
               <h4>{item.name}</h4>
               <p>{item.description}</p>
               <p className="price">{item.price} ETH</p>
-              <div className="status-badge" style={{ backgroundColor: ItemStateHelpers.getStateColor(item.state) }}>
+              {/* Enhanced status badge */}
+              <div 
+                className={`status-badge ${getStatusBadgeClass(item.state)}`}
+                style={{ backgroundColor: ItemStateHelpers.getStateColor(item.state) }}
+              >
                 {ItemStateHelpers.getStateLabel(item.state)}
               </div>
               {item.buyer && (
