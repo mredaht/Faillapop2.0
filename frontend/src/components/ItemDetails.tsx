@@ -168,113 +168,171 @@ export const ItemDetails: React.FC<ItemDetailsProps> = ({
 
   return (
     <div className="modal-overlay">
-      <div className="modal">
-        <button onClick={onClose} className="modal-close">×</button>
-
-        <h2>{item.name}</h2>
-        <p className="description">{item.description}</p>
-        
-        <div className="details">
-          <p><strong>Price:</strong> {item.price} ETH</p>
-          <p><strong>Seller:</strong> {`${item.seller.slice(0, 6)}...${item.seller.slice(-4)}`}</p>
-          {item.buyer && (
-            <p><strong>Buyer:</strong> {`${item.buyer.slice(0, 6)}...${item.buyer.slice(-4)}`}</p>
-          )}
-          <p><strong>Status:</strong> 
-            <span 
-              className={`status-badge ${getStatusBadgeClass(item.state)}`}
-              style={{ 
-                backgroundColor: ItemStateHelpers.getStateColor(item.state),
-                marginLeft: '8px',
-                display: 'inline-flex'
-              }}
-            >
-              {ItemStateHelpers.getStateLabel(item.state)}
-            </span>
-          </p>
-          {item.buyTimestamp && (
-            <p><strong>Purchase Date:</strong> {new Date(item.buyTimestamp * 1000).toLocaleDateString()}</p>
-          )}
+      <div className="modal-content">
+        {/* Header del modal */}
+        <div className="modal-header">
+          <h2 className="modal-title">{item.name}</h2>
+          <button onClick={onClose} className="modal-close">×</button>
         </div>
 
-        {isSecurityDemo && (
-          <div className="security-demo-section">
-            <h3>🚨 Vulnerability Testing</h3>
-            <p>This section demonstrates Web3 security vulnerabilities:</p>
+        {/* Body del modal */}
+        <div className="modal-body">
+          <div className="modal-item-details">
             
-            <div className="button-group">
-              <button 
-                onClick={handleRaceConditionDemo}
-                className="button button-warning"
-                disabled={loading}
-              >
-                🏃‍♂️ Demo Race Condition Attack
-              </button>
-              
-              <button 
-                onClick={handlePriceManipulationDemo}
-                className="button button-warning"
-                disabled={loading}
-              >
-                💰 Demo Price Manipulation
-              </button>
+            {/* Descripción del item */}
+            <div className="modal-item-description">
+              <h4>Description</h4>
+              <p>{item.description}</p>
             </div>
-            
-            {racePriceAttack && (
-              <div className="attack-indicator">
-                <p>🚨 RACE CONDITION ATTACK IN PROGRESS...</p>
-              </div>
-            )}
-            
-            {priceManipulation && (
-              <div className="attack-indicator">
-                <p>🚨 PRICE MANIPULATION ACTIVE...</p>
-              </div>
-            )}
-          </div>
-        )}
 
-        <div className="item-actions">
+            {/* Información del item en tarjetas */}
+            <div className="modal-item-meta">
+              <div className="modal-meta-card modal-price-card">
+                <div className="modal-meta-icon">💰</div>
+                <div className="modal-meta-info">
+                  <p className="modal-meta-label">Price</p>
+                  <p className="modal-meta-value">{item.price} ETH</p>
+                </div>
+              </div>
+
+              <div className="modal-meta-card modal-seller-card">
+                <div className="modal-meta-icon">👤</div>
+                <div className="modal-meta-info">
+                  <p className="modal-meta-label">Seller</p>
+                  <p className="modal-meta-value">{`${item.seller.slice(0, 6)}...${item.seller.slice(-4)}`}</p>
+                </div>
+              </div>
+
+              {item.buyer && (
+                <div className="modal-meta-card">
+                  <div className="modal-meta-icon">🛒</div>
+                  <div className="modal-meta-info">
+                    <p className="modal-meta-label">Buyer</p>
+                    <p className="modal-meta-value">{`${item.buyer.slice(0, 6)}...${item.buyer.slice(-4)}`}</p>
+                  </div>
+                </div>
+              )}
+
+              {item.buyTimestamp && (
+                <div className="modal-meta-card">
+                  <div className="modal-meta-icon">📅</div>
+                  <div className="modal-meta-info">
+                    <p className="modal-meta-label">Purchase Date</p>
+                    <p className="modal-meta-value">{new Date(item.buyTimestamp * 1000).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Status section */}
+            <div className="modal-status-section">
+              <h4>Current Status</h4>
+              <span 
+                className={`status-badge ${getStatusBadgeClass(item.state)}`}
+                style={{ 
+                  backgroundColor: ItemStateHelpers.getStateColor(item.state),
+                  display: 'inline-flex'
+                }}
+              >
+                {ItemStateHelpers.getStateLabel(item.state)}
+              </span>
+            </div>
+
+            {/* Security demo section */}
+            {isSecurityDemo && (
+              <div className="security-demo-section">
+                <h3>🚨 Vulnerability Testing</h3>
+                <p>This section demonstrates Web3 security vulnerabilities:</p>
+                
+                <div className="button-group">
+                  <button 
+                    onClick={handleRaceConditionDemo}
+                    className="button button-warning"
+                    disabled={loading}
+                  >
+                    🏃‍♂️ Demo Race Condition Attack
+                  </button>
+                  
+                  <button 
+                    onClick={handlePriceManipulationDemo}
+                    className="button button-warning"
+                    disabled={loading}
+                  >
+                    💰 Demo Price Manipulation
+                  </button>
+                </div>
+                
+                {racePriceAttack && (
+                  <div className="attack-indicator">
+                    <p>🚨 RACE CONDITION ATTACK IN PROGRESS...</p>
+                  </div>
+                )}
+                
+                {priceManipulation && (
+                  <div className="attack-indicator">
+                    <p>🚨 PRICE MANIPULATION ACTIVE...</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dispute section */}
+            {canDispute && (
+              <div className="modal-status-section">
+                <h4>Open Dispute</h4>
+                <textarea
+                  value={disputeReason}
+                  onChange={(e) => setDisputeReason(e.target.value)}
+                  placeholder="Enter your reason for dispute..."
+                  className="dispute-input"
+                />
+              </div>
+            )}
+
+            {/* Error message */}
+            {error && <div className="error">{error}</div>}
+          </div>
+        </div>
+
+        {/* Actions del modal */}
+        <div className="modal-actions">
           {canBuy && !isSecurityDemo && (
             <button
               onClick={handleBuy}
               disabled={loading}
-              className="button button-primary"
+              className="modal-action-button modal-buy-button"
             >
-              {loading ? 'Processing...' : 'Buy Now'}
+              {loading ? 'Processing...' : '🛒 Buy Now'}
             </button>
           )}
 
           {canDispute && (
-            <div className="dispute-section">
-              <textarea
-                value={disputeReason}
-                onChange={(e) => setDisputeReason(e.target.value)}
-                placeholder="Enter your reason for dispute..."
-                className="dispute-input"
-              />
-              <button
-                onClick={handleDispute}
-                disabled={loading || !disputeReason}
-                className="button button-warning"
-              >
-                {loading ? 'Processing...' : 'Open Dispute'}
-              </button>
-            </div>
+            <button
+              onClick={handleDispute}
+              disabled={loading || !disputeReason}
+              className="modal-action-button modal-dispute-button"
+            >
+              {loading ? 'Processing...' : '⚖️ Open Dispute'}
+            </button>
           )}
 
           {canConfirmReceipt && (
             <button
               onClick={handleConfirmReceipt}
               disabled={loading}
-              className="button button-success"
+              className="modal-action-button modal-confirm-button"
             >
-              {loading ? 'Processing...' : 'Confirm Receipt'}
+              {loading ? 'Processing...' : '✅ Confirm Receipt'}
             </button>
           )}
-        </div>
 
-        {error && <div className="error">{error}</div>}
+          <button
+            onClick={onClose}
+            className="modal-action-button modal-cancel-button"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
