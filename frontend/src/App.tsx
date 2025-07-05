@@ -117,6 +117,33 @@ function App() {
     setSelectedItem(item);
   };
 
+  const handleTabChange = async (tabName: 'marketplace' | 'purchases' | 'vault' | 'security' | 'race-demo') => {
+    setActiveTab(tabName);
+    
+    // Si cambiamos al marketplace, recargar automáticamente los datos
+    if (tabName === 'marketplace' && userAddress) {
+      console.log('Refreshing marketplace data...');
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Recargar items del marketplace
+        await loadItems();
+        
+        // También recargar el estado del usuario (por si fue blacklisteado o cambió algo)
+        const blacklisted = await contractService.isBlacklisted(userAddress);
+        setIsBlacklisted(blacklisted);
+        
+        console.log('Marketplace data refreshed successfully');
+      } catch (err) {
+        console.error('Error refreshing marketplace:', err);
+        setError(err instanceof Error ? err.message : 'Error refreshing marketplace data');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
   return (
     <div>
       <header className="header">
@@ -146,31 +173,31 @@ function App() {
               <div className="tab-navigation">
                 <button 
                   className={`tab-button ${activeTab === 'marketplace' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('marketplace')}
+                  onClick={() => handleTabChange('marketplace')}
                 >
                   🛒 Marketplace
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 'purchases' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('purchases')}
+                  onClick={() => handleTabChange('purchases')}
                 >
                   📦 My Purchases
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 'vault' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('vault')}
+                  onClick={() => handleTabChange('vault')}
                 >
                   💰 Vault
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 'security' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('security')}
+                  onClick={() => handleTabChange('security')}
                 >
                   🚨 Security Demo
                 </button>
                 <button 
                   className={`tab-button ${activeTab === 'race-demo' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('race-demo')}
+                  onClick={() => handleTabChange('race-demo')}
                 >
                   ⚡ Race Condition Demo
                 </button>

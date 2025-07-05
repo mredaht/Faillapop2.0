@@ -293,6 +293,273 @@ export class ContractService {
     return items;
   }
 
+  // Nueva función para obtener transacciones completadas usando eventos
+  async getCompletedTransactions(userAddress?: string): Promise<Item[]> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    try {
+      // Obtener eventos de compra y reembolso para calcular transacciones completadas
+      const buyFilter = this.contract.filters.Buy();
+      const reimburseFilter = this.contract.filters.Reimburse();
+      
+      const buyEvents = await this.contract.queryFilter(buyFilter);
+      const reimburseEvents = await this.contract.queryFilter(reimburseFilter);
+      
+      const completedTransactions: Item[] = [];
+      
+      // Procesar eventos de compra
+      for (const event of buyEvents) {
+        if (event.args) {
+          const buyer = event.args.user;
+          const itemId = event.args.item.toNumber();
+          
+          // Si se especifica una dirección, filtrar por ella
+          if (userAddress && buyer.toLowerCase() !== userAddress.toLowerCase()) {
+            continue;
+          }
+          
+          // Verificar si el item ya no existe en el contrato (fue completado)
+          try {
+            const item = await this.contract.offeredItems(itemId);
+            if (item.seller === ethers.constants.AddressZero) {
+              // El item fue eliminado, significa que la transacción se completó
+              // Obtener información del evento
+              const tx = await event.getTransaction();
+              const receipt = await tx.wait();
+              
+              // Estimar información del item desde la transacción (no es perfecto, pero funcional)
+              completedTransactions.push({
+                id: itemId,
+                name: `Completed Purchase #${itemId}`,
+                description: 'Transaction completed and removed from contract',
+                price: ethers.utils.formatEther(tx.value || 0),
+                seller: '', // No disponible desde el evento
+                buyer: buyer,
+                state: ItemState.Sold,
+                buyTimestamp: (await this.provider!.getBlock(receipt.blockNumber)).timestamp,
+                isSold: true,
+                imageUrl: ''
+              });
+            }
+          } catch (error) {
+            // Si falla, probablemente el item fue eliminado
+            console.debug('Item was likely completed:', itemId);
+          }
+        }
+      }
+      
+      return completedTransactions;
+    } catch (error) {
+      console.error('Error getting completed transactions:', error);
+      return [];
+    }
+  }
+
+  // Nueva función para obtener el total gastado por un usuario (incluyendo transacciones completadas)
+  async getTotalSpentByUser(userAddress: string): Promise<string> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    try {
+      // Obtener items actuales del usuario (que aún existen en el contrato)
+      const allItems = await this.getAllItems();
+      const currentUserItems = allItems.filter(item => 
+        item.buyer && 
+        item.buyer.toLowerCase() === userAddress.toLowerCase()
+      );
+      
+      let totalSpent = 0;
+      const processedItemIds = new Set<number>();
+      
+      // Sumar gastos de items actuales
+      for (const item of currentUserItems) {
+        totalSpent += Number(item.price);
+        processedItemIds.add(item.id);
+        console.log(`[TotalSpent] Current item ${item.id}: ${item.price} ETH`);
+      }
+      
+      // Para las transacciones completadas, usar eventos Buy y obtener el precio de la transacción
+      // Como el parámetro user no está indexado, obtenemos todos los eventos Buy
+      const buyFilter = this.contract.filters.Buy();
+      const allBuyEvents = await this.contract.queryFilter(buyFilter);
+      
+      // Filtrar manualmente por el usuario específico
+      const buyEvents = allBuyEvents.filter(event => 
+        event.args && event.args.user.toLowerCase() === userAddress.toLowerCase()
+      );
+      
+      console.log(`[TotalSpent] Found ${buyEvents.length} buy events for user ${userAddress}`);
+      
+      for (const event of buyEvents) {
+        if (event.args) {
+          const itemId = event.args.item.toNumber();
+          
+          // Evitar duplicados - si ya procesamos este item, continuar
+          if (processedItemIds.has(itemId)) {
+            console.log(`[TotalSpent] Skipping duplicate item ${itemId}`);
+            continue;
+          }
+          
+          // Verificar si el item ya no existe en el contrato (fue completado)
+          try {
+            const item = await this.contract.offeredItems(itemId);
+            if (item.seller === ethers.constants.AddressZero) {
+              // Item completado, obtener el precio de la transacción original
+              const tx = await event.getTransaction();
+              const transactionValue = Number(ethers.utils.formatEther(tx.value || 0));
+              totalSpent += transactionValue;
+              processedItemIds.add(itemId);
+              console.log(`[TotalSpent] Completed item ${itemId}: ${transactionValue} ETH`);
+            }
+          } catch (error) {
+            // Si falla al obtener el item, probablemente fue completado
+            const tx = await event.getTransaction();
+            const transactionValue = Number(ethers.utils.formatEther(tx.value || 0));
+            totalSpent += transactionValue;
+            processedItemIds.add(itemId);
+            console.log(`[TotalSpent] Error getting item ${itemId}, assuming completed: ${transactionValue} ETH`);
+          }
+        }
+      }
+      
+      console.log(`[TotalSpent] Total calculated: ${totalSpent.toFixed(4)} ETH`);
+      return totalSpent.toFixed(4);
+    } catch (error) {
+      console.error('Error calculating total spent:', error);
+      return '0';
+    }
+  }
+
+  // Nueva función para obtener el total acumulativo de compras de un usuario
+  async getTotalPurchasesByUser(userAddress: string): Promise<number> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    try {
+      // Obtener items actuales del usuario (que aún existen en el contrato)
+      const allItems = await this.getAllItems();
+      const currentUserItems = allItems.filter(item => 
+        item.buyer && 
+        item.buyer.toLowerCase() === userAddress.toLowerCase()
+      );
+      
+      let totalPurchases = 0;
+      const processedItemIds = new Set<number>();
+      
+      // Contar compras actuales
+      for (const item of currentUserItems) {
+        totalPurchases += 1;
+        processedItemIds.add(item.id);
+        console.log(`[TotalPurchases] Current item ${item.id}: ${item.name}`);
+      }
+      
+      // Para las transacciones completadas, usar eventos Buy
+      const buyFilter = this.contract.filters.Buy();
+      const allBuyEvents = await this.contract.queryFilter(buyFilter);
+      
+      // Filtrar manualmente por el usuario específico
+      const buyEvents = allBuyEvents.filter(event => 
+        event.args && event.args.user.toLowerCase() === userAddress.toLowerCase()
+      );
+      
+      console.log(`[TotalPurchases] Found ${buyEvents.length} buy events for user ${userAddress}`);
+      
+      for (const event of buyEvents) {
+        if (event.args) {
+          const itemId = event.args.item.toNumber();
+          
+          // Evitar duplicados - si ya procesamos este item, continuar
+          if (processedItemIds.has(itemId)) {
+            console.log(`[TotalPurchases] Skipping duplicate item ${itemId}`);
+            continue;
+          }
+          
+          // Verificar si el item ya no existe en el contrato (fue completado)
+          try {
+            const item = await this.contract.offeredItems(itemId);
+            if (item.seller === ethers.constants.AddressZero) {
+              // Item completado, contar como compra
+              totalPurchases += 1;
+              processedItemIds.add(itemId);
+              console.log(`[TotalPurchases] Completed item ${itemId}: counted`);
+            }
+          } catch (error) {
+            // Si falla al obtener el item, probablemente fue completado
+            totalPurchases += 1;
+            processedItemIds.add(itemId);
+            console.log(`[TotalPurchases] Error getting item ${itemId}, assuming completed: counted`);
+          }
+        }
+      }
+      
+      console.log(`[TotalPurchases] Total calculated: ${totalPurchases}`);
+      return totalPurchases;
+    } catch (error) {
+      console.error('Error calculating total purchases:', error);
+      return 0;
+    }
+  }
+
+  // Nueva función para obtener el total de ventas de un vendedor (incluyendo transacciones completadas)
+  async getTotalSalesBySeller(sellerAddress: string): Promise<string> {
+    if (!this.contract) throw new Error('Contract not initialized');
+    
+    try {
+      // Obtener items actuales del vendedor
+      const sellerItems = await this.getSellerItems(sellerAddress);
+      
+      let totalSales = 0;
+      
+      // Sumar ventas de items actuales vendidos
+      for (const item of sellerItems) {
+        if (item.state === ItemState.Sold) {
+          totalSales += Number(item.price);
+        }
+      }
+      
+      // Obtener transacciones completadas usando eventos de compra
+      const buyFilter = this.contract.filters.Buy();
+      const allBuyEvents = await this.contract.queryFilter(buyFilter);
+      
+      // Verificar cada compra para ver si fue una venta completada de este vendedor
+      for (const event of allBuyEvents) {
+        if (event.args) {
+          const itemId = event.args.item.toNumber();
+          
+          // Verificar si el item fue completado (eliminado del contrato)
+          try {
+            const item = await this.contract.offeredItems(itemId);
+            if (item.seller === ethers.constants.AddressZero) {
+              // Item completado, necesitamos verificar si era de este vendedor
+              // Como no podemos obtener el vendedor del item eliminado,
+              // usaremos un enfoque diferente: buscar eventos NewItem del vendedor
+              const newItemFilter = this.contract.filters.NewItem();
+              const newItemEvents = await this.contract.queryFilter(newItemFilter);
+              
+              for (const newItemEvent of newItemEvents) {
+                if (newItemEvent.args && newItemEvent.args.id.toNumber() === itemId) {
+                  // Verificar si el creador del item es nuestro vendedor
+                  const tx = await newItemEvent.getTransaction();
+                  if (tx.from.toLowerCase() === sellerAddress.toLowerCase()) {
+                    // Esta era una venta completada de nuestro vendedor
+                    const buyTx = await event.getTransaction();
+                    totalSales += Number(ethers.utils.formatEther(buyTx.value || 0));
+                  }
+                  break;
+                }
+              }
+            }
+          } catch (error) {
+            console.debug('Error checking completed item:', itemId);
+          }
+        }
+      }
+      
+      return totalSales.toFixed(4);
+    } catch (error) {
+      console.error('Error calculating total sales:', error);
+      return '0';
+    }
+  }
+
   async getSellerItems(sellerAddress: string): Promise<Item[]> {
     if (!this.contract) throw new Error('Contract not initialized');
     

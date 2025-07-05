@@ -55,11 +55,10 @@ export const SellerProfile: React.FC<SellerProfileProps> = ({ userAddress, contr
       const items = await contractService.getSellerItems(userAddress);
       setSellerItems(items);
       
-      // Calcular ventas totales
-      const sales = items
-        .filter(item => ItemStateHelpers.isSold(item.state))
-        .reduce((acc, item) => acc + Number(item.price), 0);
-      setTotalSales(sales.toFixed(4));
+      // Calcular ventas totales usando el nuevo método que incluye transacciones completadas
+      const totalSalesIncludingCompleted = await contractService.getTotalSalesBySeller(userAddress);
+      setTotalSales(totalSalesIncludingCompleted);
+      
     } catch (error) {
       console.error('Error loading seller data:', error);
     } finally {

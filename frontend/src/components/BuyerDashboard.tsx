@@ -22,6 +22,7 @@ const getStatusBadgeClass = (state: number): string => {
 export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({ userAddress, contractService }) => {
   const [buyerItems, setBuyerItems] = useState<Item[]>([]);
   const [totalSpent, setTotalSpent] = useState<string>('0');
+  const [totalPurchases, setTotalPurchases] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isContractReady, setIsContractReady] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -62,9 +63,14 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({ userAddress, con
       
       setBuyerItems(userBuyerItems);
       
-      // Calcular gasto total
-      const spent = userBuyerItems.reduce((acc, item) => acc + Number(item.price), 0);
-      setTotalSpent(spent.toFixed(4));
+      // Calcular gasto total usando el nuevo método que incluye transacciones completadas
+      const totalSpentIncludingCompleted = await contractService.getTotalSpentByUser(userAddress);
+      setTotalSpent(totalSpentIncludingCompleted);
+      
+      // Calcular total acumulativo de compras (incluyendo transacciones completadas)
+      const totalPurchasesIncludingCompleted = await contractService.getTotalPurchasesByUser(userAddress);
+      setTotalPurchases(totalPurchasesIncludingCompleted);
+      
     } catch (error) {
       console.error('Error loading buyer data:', error);
       setError('Error loading your purchases');
@@ -148,31 +154,31 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({ userAddress, con
         <div className="stats-grid">
           <div className="stat-card">
             <h3>Total Purchases</h3>
-            <p>{buyerItems.length}</p>
+            <p>{totalPurchases}</p>
           </div>
           <div className="stat-card">
             <h3>Total Spent</h3>
             <p>{totalSpent} ETH</p>
           </div>
           <div className="stat-card">
-            <h3>Pending Confirmations</h3>
-            <p>{buyerItems.filter(item => ItemStateHelpers.isPending(item.state)).length}</p>
+            <h3>Active Items</h3>
+            <p>{buyerItems.length}</p>
           </div>
           <div className="stat-card">
-            <h3>Disputes</h3>
-            <p>{buyerItems.filter(item => ItemStateHelpers.isDisputed(item.state)).length}</p>
+            <h3>Pending Confirmations</h3>
+            <p>{buyerItems.filter(item => ItemStateHelpers.isPending(item.state)).length}</p>
           </div>
         </div>
       </div>
 
       <div className="buyer-items">
-        <h3>Your Purchases</h3>
+        <h3>Active Purchases</h3>
         <div className="info-note">
-          <small>💡 Note: Once you confirm receipt of an item, the transaction is completed and the item will be removed from this list after a few seconds.</small>
+          <small>💡 Note: Once you confirm receipt of an item, the transaction is completed and the item will be removed from this list after a few seconds. Your total purchases and total spent will continue to include completed transactions.</small>
         </div>
         {buyerItems.length === 0 ? (
           <div className="no-items">
-            <p>No purchases yet. Start shopping!</p>
+            <p>{totalPurchases === 0 ? 'No purchases yet. Start shopping!' : 'No pending purchases. All your transactions have been completed!'}</p>
           </div>
         ) : (
           <div className="items-grid">
