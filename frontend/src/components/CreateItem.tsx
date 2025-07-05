@@ -83,7 +83,15 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate, contractService, user
 
     try {
       await onCreate(name, description, price, image || undefined);
-      setSuccessMessage('Item created successfully! 🎉');
+      
+      // Determinar el mensaje de éxito basado en si había imagen
+      const hasImage = !!image;
+      if (hasImage) {
+        setSuccessMessage('Item created successfully! 🎉 Check the console and alert for IPFS upload details!');
+      } else {
+        setSuccessMessage('Item created successfully! 🎉');
+      }
+      
       // Reset form
       setName('');
       setDescription('');
@@ -173,7 +181,7 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate, contractService, user
         </div>
 
         <div className="form-group">
-          <label htmlFor="image">Image:</label>
+          <label htmlFor="image">Image (Optional):</label>
           <input
             type="file"
             id="image"
@@ -181,6 +189,10 @@ const CreateItem: React.FC<CreateItemProps> = ({ onCreate, contractService, user
             onChange={handleImageChange}
             disabled={isLoading}
           />
+          <small className="form-note">
+            📷 Image upload enabled via IPFS! Your images will be stored on the decentralized IPFS network.<br/>
+            ⚠️ Note: The current smart contract doesn't store image URLs on-chain, but you can verify IPFS upload works!
+          </small>
           {previewUrl && (
             <div className="image-preview">
               <img src={previewUrl} alt="Preview" />

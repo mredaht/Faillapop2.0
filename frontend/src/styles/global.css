@@ -472,6 +472,21 @@ button:disabled, .button:disabled {
   object-fit: cover;
 }
 
+/* Estilo especial para la imagen por defecto */
+.item-image .default-item-image {
+  object-fit: contain;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+/* Animación suave para las imágenes que fallan al cargar */
+.item-image img[src="/default-item.svg"] {
+  opacity: 0.95;
+  transition: opacity 0.3s ease;
+}
+
 .item-details {
   padding: var(--space-6); /* Más padding interno */
   position: relative;

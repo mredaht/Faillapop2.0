@@ -23,12 +23,18 @@ export class ContractService {
   private ipfs: any;
 
   constructor() {
-    // Inicializar IPFS
-    this.ipfs = create({
-      host: 'localhost',
-      port: 5001,
-      protocol: 'http',
-    });
+    // Intentando conectar a IPFS local primero
+    try {
+      this.ipfs = create({
+        host: 'localhost',
+        port: 5001,
+        protocol: 'http',
+      });
+      console.log('IPFS enabled - Using local IPFS node');
+    } catch (error) {
+      console.warn('Local IPFS node not available, images will be disabled');
+      this.ipfs = null;
+    }
   }
 
   async init() {
@@ -234,12 +240,18 @@ export class ContractService {
   }
 
   async uploadToIPFS(file: File): Promise<string> {
+    if (!this.ipfs) {
+      console.warn('IPFS not available, skipping image upload');
+      return 'placeholder-image'; // Retorna un placeholder en lugar de fallar
+    }
+
     try {
       const result = await this.ipfs.add(file);
       return result.path;
     } catch (error) {
       console.error('Error uploading to IPFS:', error);
-      throw new Error('Failed to upload image to IPFS');
+      console.warn('Image upload failed, continuing without image');
+      return 'failed-upload'; // Retorna un placeholder en lugar de fallar
     }
   }
 
@@ -252,13 +264,36 @@ export class ContractService {
     const contractWithSigner = this.contract.connect(signer);
     
     let imageUrl = '';
+    let ipfsSuccessMsg = '';
+    
     if (image) {
+      console.log('📤 Uploading image to IPFS...');
       imageUrl = await this.uploadToIPFS(image);
+      
+      if (imageUrl && imageUrl !== 'placeholder-image' && imageUrl !== 'failed-upload') {
+        console.log('✅ Image uploaded successfully to IPFS:', imageUrl);
+        console.log('🔗 IPFS URL:', `https://ipfs.io/ipfs/${imageUrl}`);
+        
+        ipfsSuccessMsg = `\n\n📤 IPFS Upload Success!\n🔗 Hash: ${imageUrl}\n🌐 URL: https://ipfs.io/ipfs/${imageUrl}`;
+        
+        // Mostrar notificación al usuario
+        alert(`✅ Image uploaded successfully to IPFS!${ipfsSuccessMsg}\n\n⚠️ Note: The current smart contract doesn't store image URLs on-chain, but your image is safely stored on IPFS!`);
+      } else {
+        console.log('⚠️ Image upload failed or IPFS not available');
+      }
     }
 
+    console.log('📝 Creating item on blockchain...');
     const priceInWei = ethers.utils.parseEther(price);
     const tx = await contractWithSigner.newSale(name, description, priceInWei);
     await tx.wait();
+    
+    if (imageUrl && imageUrl !== 'placeholder-image' && imageUrl !== 'failed-upload') {
+      console.log('📦 Item created successfully! Image is on IPFS:', imageUrl);
+      console.log('💡 Note: Contract doesn\'t store image URLs, but IPFS upload worked perfectly!');
+    } else {
+      console.log('📦 Item created successfully without image');
+    }
   }
 
   async getAllItems(): Promise<Item[]> {

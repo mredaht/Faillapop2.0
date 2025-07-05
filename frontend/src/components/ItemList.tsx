@@ -35,12 +35,21 @@ export const ItemList: React.FC<ItemListProps> = ({ items, onBuyItem, userAddres
         return (
           <div key={item.id} className={`item-card ${isYourItem ? 'your-item' : ''}`}>
             <div className="item-image">
-              {item.imageUrl ? (
-                <img src={item.imageUrl} alt={item.name} />
+              {item.imageUrl && item.imageUrl !== '' && item.imageUrl !== 'placeholder-image' && item.imageUrl !== 'failed-upload' ? (
+                <img 
+                  src={item.imageUrl.startsWith('http') ? item.imageUrl : `https://ipfs.io/ipfs/${item.imageUrl}`} 
+                  alt={item.name} 
+                  onError={(e) => {
+                    // Si la imagen falla al cargar, usar la imagen por defecto
+                    e.currentTarget.src = '/default-item.svg';
+                  }}
+                />
               ) : (
-                <div className="placeholder-image">
-                  <span>🛍️</span>
-                </div>
+                <img 
+                  src="/default-item.svg" 
+                  alt={item.name} 
+                  className="default-item-image"
+                />
               )}
             </div>
             
