@@ -4,6 +4,7 @@ import { ethers } from 'ethers';
 import { ItemState } from '../types/Item';
 import './RaceConditionDemo.css';
 import { Item } from '../types/Item';
+import { useUser } from '../context/UserContext';
 
 interface RaceConditionDemoProps {
   contractService: ContractService;
@@ -19,6 +20,8 @@ interface AttackScenario {
 }
 
 const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, userAddress }) => {
+  const { startPriceManipulation, endPriceManipulation, forceMarketplaceRefresh } = useUser();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [availableItems, setAvailableItems] = useState<Item[]>([]);
@@ -27,6 +30,12 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
   const [isAttacking, setIsAttacking] = useState(false);
   const [attackResults, setAttackResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estado para manipulación de precios
+  const [originalPrice, setOriginalPrice] = useState<string>('');
+  const [currentPrice, setCurrentPrice] = useState<string>('');
+  const [showRealPrice, setShowRealPrice] = useState<boolean>(false);
+  const [priceManipulated, setPriceManipulated] = useState<boolean>(false);
 
   const scenarios: AttackScenario[] = [
     { id: 'race_multiple_buyers', name: 'Race Condition Attack', description: 'Multiple buyers attempt to purchase the same item simultaneously', type: 'race', enabled: true },
@@ -85,6 +94,29 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
       loadAvailableItems();
     }
   }, [contractService, userAddress, loadAvailableItems]);
+
+  // Reset price manipulation state when item or scenario changes
+  const resetPriceState = () => {
+    setOriginalPrice('');
+    setCurrentPrice('');
+    setShowRealPrice(false);
+    setPriceManipulated(false);
+    setPriceManipulationValue('');
+    endPriceManipulation(); // Desactivar manipulación global
+    forceMarketplaceRefresh(); // Force marketplace to re-render with real prices
+  };
+
+  // Reset when item selection changes
+  useEffect(() => {
+    if (selectedItem) {
+      resetPriceState();
+    }
+  }, [selectedItem]);
+
+  // Reset when scenario changes
+  useEffect(() => {
+    resetPriceState();
+  }, [attackScenario]);
 
   const executeRaceConditionAttack = async (itemId: number) => {
     console.log('🚨 EXECUTING RACE CONDITION ATTACK');
@@ -235,7 +267,7 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
   };
 
   const executePriceManipulationAttack = async (itemId: number, newPrice: string) => {
-    console.log('🚨 EXECUTING PRICE MANIPULATION ATTACK');
+    console.log('🚨 EXECUTING ENHANCED PRICE MANIPULATION ATTACK');
     console.log(`Target Item ID: ${itemId}`);
     console.log(`New Price: ${newPrice} ETH`);
     
@@ -248,85 +280,167 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
 
       const isOwner = item.seller.toLowerCase() === userAddress.toLowerCase();
       
+      // Store price information for UI spoofing demo
+      setOriginalPrice(item.price);
+      setCurrentPrice(item.price);
+      setShowRealPrice(false);
+      setPriceManipulated(false);
+      
       console.log(`Original price: ${item.price} ETH`);
       console.log(`Manipulated price: ${newPrice} ETH`);
       console.log(`User is owner: ${isOwner}`);
 
+      results.push({
+        type: 'price_info',
+        status: 'info',
+        message: `💰 Original Price: ${item.price} ETH | Target Price: ${newPrice} ETH | Difference: ${(parseFloat(newPrice) - parseFloat(item.price)).toFixed(3)} ETH`
+      });
+
       if (isOwner) {
-        // Scenario 1: User is the seller - demonstrate malicious seller behavior
-        console.log('🎭 SCENARIO: Malicious Seller Price Manipulation');
-        console.log('You are the seller of this item. This demonstrates how a malicious seller could:');
-        console.log('1. Change price during a buyer\'s transaction');
-        console.log('2. Exploit race conditions in the purchase process');
-        
-        // Simulate a buyer attempting to purchase while seller manipulates price
-        const purchasePromise = new Promise((resolve, reject) => {
-          setTimeout(() => {
-            console.log('📋 Simulating buyer purchase attempt...');
-            resolve({ type: 'simulated_purchase', status: 'attempted', message: 'Buyer attempted to buy at original price' });
-          }, 500);
-        });
-
-        // Change price during "buyer's transaction"
-        setTimeout(async () => {
-          try {
-            console.log('💰 Seller changing price during buyer transaction...');
-            const priceInWei = ethers.utils.parseEther(newPrice);
-            const tx = await contractService.quickPriceChange(itemId, priceInWei);
-            console.log('✅ Price change successful:', tx);
-            results.push({ type: 'price_change', status: 'success', tx, message: 'Seller successfully manipulated price during buyer transaction' });
-          } catch (error: any) {
-            console.log('❌ Price change failed:', error.message);
-            results.push({ type: 'price_change', status: 'failed', error: error.message });
-          }
-        }, 1000);
-
-        const purchaseResult = await purchasePromise;
-        results.push(purchaseResult);
-        
-        // Add explanation
+        // ENHANCED Scenario 1: Malicious Seller with UI Spoofing
         results.push({
           type: 'explanation',
           status: 'info',
-          message: 'This demonstrates how a malicious seller can manipulate prices during active transactions, potentially causing buyers to pay unexpected amounts.'
+          message: '🎭 SCENARIO: Malicious Seller + UI Spoofing Attack'
+        });
+        
+        results.push({
+          type: 'explanation',
+          status: 'info',
+          message: '📋 Attack Steps: 1) Buyer sees original price in UI & Marketplace, 2) Seller manipulates contract price, 3) Buyer pays manipulated price'
+        });
+
+        // Step 1: Simulate buyer seeing original price everywhere & activate global price manipulation
+        console.log('🎭 DEBUG: Starting price manipulation for item', itemId, 'with original price', item.price);
+        startPriceManipulation(itemId, item.price);
+        forceMarketplaceRefresh(); // Force marketplace to re-render with cached prices
+        
+        results.push({
+          type: 'ui_spoofing',
+          status: 'info',
+          message: `👁️ Buyer sees cached price: ${item.price} ETH (UI + Marketplace show old price)`
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Step 2: Seller manipulates price in contract ONLY
+        try {
+          console.log('💰 Seller manipulating price in contract (frontend keeps showing old price)...');
+          const priceInWei = ethers.utils.parseEther(newPrice);
+          const tx = await contractService.quickPriceChange(itemId, priceInWei);
+          console.log('✅ Price change successful:', tx);
+          
+          // Update internal state but keep UI showing original price
+          setCurrentPrice(newPrice);
+          setPriceManipulated(true);
+          
+          results.push({ 
+            type: 'price_change', 
+            status: 'success', 
+            tx, 
+            message: `🔄 Contract price manipulated: ${item.price} ETH → ${newPrice} ETH (UI still shows ${item.price} ETH)`
+          });
+          
+          results.push({
+            type: 'ui_spoofing',
+            status: 'vulnerability',
+            message: `🎭 Critical: Marketplace still shows ${item.price} ETH while contract has ${newPrice} ETH`
+          });
+          
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Step 3: Simulate buyer attempting purchase at "displayed" price
+          results.push({
+            type: 'buyer_attempt',
+            status: 'vulnerability',
+            message: `💸 Buyer attempts to pay ${item.price} ETH but will actually pay ${newPrice} ETH!`
+          });
+          
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Step 4: Reveal the attack
+          setShowRealPrice(true);
+          
+          results.push({
+            type: 'attack_reveal',
+            status: 'vulnerability',
+            message: `😱 ATTACK SUCCESSFUL! Buyer saw ${item.price} ETH but paid ${newPrice} ETH`
+          });
+          
+          const lossAmount = (parseFloat(newPrice) - parseFloat(item.price)).toFixed(3);
+          const lossPercentage = ((parseFloat(lossAmount) / parseFloat(item.price)) * 100).toFixed(1);
+          
+          results.push({
+            type: 'financial_impact',
+            status: 'vulnerability',
+            message: `💸 Financial Impact: ${lossAmount} ETH loss (${lossPercentage}% more expensive than displayed)`
+          });
+          
+        } catch (error: any) {
+          console.log('❌ Price change failed:', error.message);
+          results.push({ 
+            type: 'price_change', 
+            status: 'failed', 
+            error: error.message,
+            message: 'Price manipulation failed - security working correctly'
+          });
+        }
+
+        // Add educational information
+        results.push({
+          type: 'education',
+          status: 'info',
+          message: '🎓 How to protect: Always verify prices directly in smart contract before signing transactions'
         });
 
       } else {
-        // Scenario 2: User is not the owner - demonstrate buyer-side attack attempt
-        console.log('🛡️ SCENARIO: Buyer Attempting Price Manipulation (Should Fail)');
-        console.log('You are not the seller. This demonstrates that:');
-        console.log('1. Only sellers can change prices (good security)');
-        console.log('2. But race conditions can still occur during purchases');
+        // ENHANCED Scenario 2: Buyer-side perspective with marketplace involvement
+        results.push({
+          type: 'explanation',
+          status: 'info',
+          message: '🛡️ SCENARIO: Buyer Protection Demo'
+        });
         
+        // Show original price (what buyer sees in marketplace)
+        results.push({
+          type: 'ui_spoofing',
+          status: 'info',
+          message: `👁️ You see price in Marketplace: ${item.price} ETH (potentially cached/outdated)`
+        });
+
+        // Simulate checking real price
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        results.push({
+          type: 'price_verification',
+          status: 'success',
+          message: `🔍 Checking real price in contract... Found: ${item.price} ETH (matches marketplace)`
+        });
+
         // Attempt to change price (should fail)
         try {
           const priceInWei = ethers.utils.parseEther(newPrice);
           const tx = await contractService.quickPriceChange(itemId, priceInWei);
-          results.push({ type: 'price_change', status: 'unexpected_success', tx, message: 'Buyer successfully changed price - THIS IS A VULNERABILITY!' });
+          results.push({ 
+            type: 'price_change', 
+            status: 'unexpected_success', 
+            tx, 
+            message: '🚨 CRITICAL VULNERABILITY: Buyer can change prices!' 
+          });
         } catch (error: any) {
-          results.push({ type: 'price_change', status: 'failed', error: error.message, message: 'Buyer cannot change price - security working correctly' });
+          results.push({ 
+            type: 'price_change', 
+            status: 'failed', 
+            error: error.message, 
+            message: '✅ Security working: Only seller can change prices' 
+          });
         }
 
-        // But we can still demonstrate race conditions in purchases
-        console.log('🏃 Attempting purchase race condition...');
-        const purchasePromise = contractService.buyItem(itemId)
-          .then((tx) => {
-            console.log('Purchase transaction successful:', tx);
-            return { type: 'purchase', status: 'success', tx, message: 'Purchase completed' };
-          })
-          .catch((error) => {
-            console.log('Purchase transaction failed:', error.message);
-            return { type: 'purchase', status: 'failed', error: error.message };
-          });
-
-        const purchaseResult = await purchasePromise;
-        results.push(purchaseResult);
-        
-        // Add explanation
+        // Show safe purchase process
         results.push({
-          type: 'explanation',
-          status: 'info',
-          message: 'While buyers cannot manipulate prices, race conditions in purchases can still occur when multiple buyers target the same item.'
+          type: 'education',
+          status: 'success',
+          message: '🛡️ Safe practice: Price verified before purchase, no manipulation possible'
         });
       }
 
@@ -383,12 +497,13 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
           Use this for educational purposes only!
         </p>
         <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '0.9rem' }}>
-          <strong>📋 How to test Race Conditions:</strong>
+          <strong>📋 Available Attack Demos:</strong>
           <br />
-          <br />• <strong>Race Condition Attack:</strong> Launches 5 simultaneous purchase attempts on the same item
-          <br />• <strong>Expected Result:</strong> Only 1 should succeed (the "winner"), others should fail
-          <br />• <strong>Vulnerability:</strong> The timing window where multiple transactions can pass initial checks
-          <br />• <strong>Price Manipulation:</strong> Change price during active transactions (owners only)
+          <br />• <strong>Race Condition Attack:</strong> 5 simultaneous buyers compete for the same item
+          <br />• <strong>Expected Result:</strong> Only 1 should succeed, others fail (timing vulnerability)
+          <br />• <strong>Price Manipulation Attack:</strong> UI spoofing + real-time price changes
+          <br />• <strong>Educational Focus:</strong> Shows how buyers can be deceived by fake/cached prices
+          <br />• <strong>Protection Methods:</strong> Always verify prices in smart contract before signing
         </div>
       </div>
 
@@ -472,9 +587,67 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
           </div>
         </div>
 
-        {attackScenario && attackScenario.type === 'price' && (
+        {attackScenario && attackScenario.type === 'price' && selectedItem && (
           <div className="price-manipulation-config">
             <h3>3. Configure Price Manipulation</h3>
+            
+            {/* Price comparison display */}
+            <div className="price-comparison">
+              <div className="price-display-section">
+                <div className="original-price">
+                  <h4>💰 Original Price</h4>
+                  <div className="price-value">{originalPrice || selectedItem.price} ETH</div>
+                  <small>What buyer initially sees</small>
+                </div>
+                
+                <div className="arrow">→</div>
+                
+                <div className="manipulated-price">
+                  <h4>🎯 Target Price</h4>
+                  <div className="price-value">
+                    {priceManipulationValue || '?.???'} ETH
+                  </div>
+                  <small>What seller wants to charge</small>
+                </div>
+                
+                {priceManipulationValue && (
+                  <div className="price-impact">
+                    <h4>📊 Impact</h4>
+                    <div className="impact-value">
+                      {(parseFloat(priceManipulationValue) - parseFloat(selectedItem.price)).toFixed(3)} ETH
+                    </div>
+                    <small>
+                      {parseFloat(priceManipulationValue) > parseFloat(selectedItem.price) ? 
+                        `+${(((parseFloat(priceManipulationValue) - parseFloat(selectedItem.price)) / parseFloat(selectedItem.price)) * 100).toFixed(1)}% more` :
+                        `${(((parseFloat(priceManipulationValue) - parseFloat(selectedItem.price)) / parseFloat(selectedItem.price)) * 100).toFixed(1)}% less`
+                      }
+                    </small>
+                  </div>
+                )}
+              </div>
+              
+              {/* Current contract state */}
+              {priceManipulated && (
+                <div className="current-state">
+                  <h4>🔄 Current Contract State</h4>
+                  <div className="state-info">
+                    <span className="label">Price in contract:</span>
+                    <span className={`value ${showRealPrice ? 'revealed' : 'hidden'}`}>
+                      {showRealPrice ? `${currentPrice} ETH` : '???'}
+                    </span>
+                    {!showRealPrice && (
+                      <button 
+                        onClick={() => setShowRealPrice(true)}
+                        className="reveal-button"
+                      >
+                        🔍 Check Real Price
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <div className="form-group">
               <label>New Price (ETH):</label>
               <input
@@ -484,7 +657,10 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
                 onChange={(e) => setPriceManipulationValue(e.target.value)}
                 placeholder="Enter new price"
               />
-              <small>Current price: {selectedItem?.price} ETH</small>
+              <small>
+                Current: {selectedItem.price} ETH | 
+                {priceManipulationValue ? ` Target: ${priceManipulationValue} ETH` : ' Enter target price'}
+              </small>
             </div>
           </div>
         )}
@@ -498,6 +674,29 @@ const RaceConditionDemo: React.FC<RaceConditionDemoProps> = ({ contractService, 
           >
             {isAttacking ? 'Executing Attack...' : '🚨 Execute Vulnerability'}
           </button>
+          
+          {/* Status de manipulación de precios */}
+          <div className={`manipulation-status ${priceManipulated ? 'active' : ''}`}>
+            {priceManipulated ? (
+              <>
+                <strong>Price manipulation attack in progress!</strong>
+                <br />
+                The marketplace is showing cached prices while the contract has been manipulated.
+                <br />
+                <button 
+                  onClick={() => {
+                    resetPriceState();
+                    setAttackResults([]);
+                  }}
+                  className="end-manipulation-button"
+                >
+                  🔄 End Attack & Reset Demo
+                </button>
+              </>
+            ) : (
+              <span>No active price manipulation attack</span>
+            )}
+          </div>
         </div>
 
         {attackResults.length > 0 && (

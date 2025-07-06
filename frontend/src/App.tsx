@@ -11,6 +11,7 @@ import { VulnerableAdminPanel } from './components/VulnerableAdminPanel';
 import { RealTokenDrainer } from './components/RealTokenDrainer';
 import QuickStake from './components/QuickStake';
 import RaceConditionDemo from './components/RaceConditionDemo';
+import { UserProvider } from './context/UserContext';
 
 import { Item, ItemState } from './types/Item';
 import { ContractService } from './services/ContractService';
@@ -145,176 +146,178 @@ function App() {
   };
 
   return (
-    <div>
-      <header className="header">
-        <div className="container">
-          <div className="header-content">
-            <h1 className="logo">Faillapop</h1>
-            <WalletConnect onAddressChange={setUserAddress} />
+    <UserProvider>
+      <div>
+        <header className="header">
+          <div className="container">
+            <div className="header-content">
+              <h1 className="logo">Faillapop</h1>
+              <WalletConnect onAddressChange={setUserAddress} />
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="main-content">
-        <div className="container">
-          {error && (
-            <div className="error-banner">
-              {error}
-            </div>
-          )}
-
-          {!userAddress ? (
-            <div className="connect-prompt">
-              Please connect your wallet to use the application
-            </div>
-          ) : (
-            <>
-              {/* Tab Navigation */}
-              <div className="tab-navigation">
-                <button 
-                  className={`tab-button ${activeTab === 'marketplace' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('marketplace')}
-                >
-                  🛒 Marketplace
-                </button>
-                <button 
-                  className={`tab-button ${activeTab === 'purchases' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('purchases')}
-                >
-                  📦 My Purchases
-                </button>
-                <button 
-                  className={`tab-button ${activeTab === 'vault' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('vault')}
-                >
-                  💰 Vault
-                </button>
-                <button 
-                  className={`tab-button ${activeTab === 'security' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('security')}
-                >
-                  🚨 Security Demo
-                </button>
-                <button 
-                  className={`tab-button ${activeTab === 'race-demo' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('race-demo')}
-                >
-                  ⚡ Race Condition Demo
-                </button>
+        <main className="main-content">
+          <div className="container">
+            {error && (
+              <div className="error-banner">
+                {error}
               </div>
+            )}
 
-              {/* Tab Content */}
-              {activeTab === 'marketplace' ? (
-                <>
-                  <QuickStake 
+            {!userAddress ? (
+              <div className="connect-prompt">
+                Please connect your wallet to use the application
+              </div>
+            ) : (
+              <>
+                {/* Tab Navigation */}
+                <div className="tab-navigation">
+                  <button 
+                    className={`tab-button ${activeTab === 'marketplace' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('marketplace')}
+                  >
+                    🛒 Marketplace
+                  </button>
+                  <button 
+                    className={`tab-button ${activeTab === 'purchases' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('purchases')}
+                  >
+                    📦 My Purchases
+                  </button>
+                  <button 
+                    className={`tab-button ${activeTab === 'vault' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('vault')}
+                  >
+                    💰 Vault
+                  </button>
+                  <button 
+                    className={`tab-button ${activeTab === 'security' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('security')}
+                  >
+                    🚨 Security Demo
+                  </button>
+                  <button 
+                    className={`tab-button ${activeTab === 'race-demo' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('race-demo')}
+                  >
+                    ⚡ Race Conditions & Price Manipulation
+                  </button>
+                </div>
+
+                {/* Tab Content */}
+                {activeTab === 'marketplace' ? (
+                  <>
+                    <QuickStake 
+                      contractService={contractService}
+                      userAddress={userAddress}
+                      onStakeComplete={() => console.log('Stake completed')}
+                    />
+                    
+                    {isBlacklisted ? (
+                      <div className="blacklist-warning">
+                        Your address has been blacklisted. You cannot create new items.
+                      </div>
+                    ) : (
+                      <CreateItem 
+                        onCreate={handleCreateItem}
+                        contractService={contractService}
+                        userAddress={userAddress}
+                      />
+                    )}
+                    
+                    {userAddress && (
+                      <SellerProfile 
+                        userAddress={userAddress} 
+                        contractService={contractService} 
+                      />
+                    )}
+                    
+                    {isLoading ? (
+                      <div className="loading">
+                        Loading items...
+                      </div>
+                    ) : (
+                      <>
+                        <ItemList 
+                          items={items} 
+                          onBuyItem={handleItemClick}
+                          userAddress={userAddress}
+                        />
+                        
+                        {selectedItem && (
+                          <ItemDetails
+                            item={selectedItem}
+                            onClose={() => setSelectedItem(null)}
+                            onBuy={handleBuyItem}
+                            onDispute={handleDispute}
+                            onConfirmReceipt={handleConfirmReceipt}
+                            userAddress={userAddress}
+                            isOpen={true}
+                            isSecurityDemo={false}
+                            contractService={contractService}
+                          />
+                        )}
+                      </>
+                    )}
+                  </>
+                ) : activeTab === 'purchases' ? (
+                  <BuyerDashboard 
                     contractService={contractService}
                     userAddress={userAddress}
-                    onStakeComplete={() => console.log('Stake completed')}
                   />
-                  
-                  {isBlacklisted ? (
-                    <div className="blacklist-warning">
-                      Your address has been blacklisted. You cannot create new items.
+                ) : activeTab === 'security' ? (
+                  <div className="security-demo">
+                    <div className="security-warning">
+                      <h2>🚨 Security Vulnerabilities Demo</h2>
+                      <p>
+                        <strong>Educational Purpose:</strong> This section demonstrates common Web3 vulnerabilities 
+                        for security auditing and learning purposes.
+                      </p>
+                      <p className="warning-text">
+                        ⚠️ In a real application, these vulnerabilities should never be present!
+                      </p>
                     </div>
-                  ) : (
-                    <CreateItem 
-                      onCreate={handleCreateItem}
+                    
+                    {/* Vulnerabilidad 1: UI Spoofing + Approve Phishing */}
+                    <MaliciousApproveButton 
                       contractService={contractService}
                       userAddress={userAddress}
                     />
-                  )}
-                  
-                  {userAddress && (
-                    <SellerProfile 
-                      userAddress={userAddress} 
-                      contractService={contractService} 
+                    
+                    {/* Vulnerabilidad 3: Admin Panel Bypass + IDOR */}
+                    <VulnerableAdminPanel 
+                      contractService={contractService}
+                      userAddress={userAddress}
                     />
-                  )}
-                  
-                  {isLoading ? (
-                    <div className="loading">
-                      Loading items...
-                    </div>
-                  ) : (
-                    <>
-                      <ItemList 
-                        items={items} 
-                        onBuyItem={handleItemClick}
-                        userAddress={userAddress}
-                      />
-                      
-                      {selectedItem && (
-                        <ItemDetails
-                          item={selectedItem}
-                          onClose={() => setSelectedItem(null)}
-                          onBuy={handleBuyItem}
-                          onDispute={handleDispute}
-                          onConfirmReceipt={handleConfirmReceipt}
-                          userAddress={userAddress}
-                          isOpen={true}
-                          isSecurityDemo={false}
-                          contractService={contractService}
-                        />
-                      )}
-                    </>
-                  )}
-                </>
-              ) : activeTab === 'purchases' ? (
-                <BuyerDashboard 
-                  contractService={contractService}
-                  userAddress={userAddress}
-                />
-              ) : activeTab === 'security' ? (
-                <div className="security-demo">
-                  <div className="security-warning">
-                    <h2>🚨 Security Vulnerabilities Demo</h2>
-                    <p>
-                      <strong>Educational Purpose:</strong> This section demonstrates common Web3 vulnerabilities 
-                      for security auditing and learning purposes.
-                    </p>
-                    <p className="warning-text">
-                      ⚠️ In a real application, these vulnerabilities should never be present!
-                    </p>
+      
+
                   </div>
-                  
-                  {/* Vulnerabilidad 1: UI Spoofing + Approve Phishing */}
-                  <MaliciousApproveButton 
+                ) : activeTab === 'race-demo' ? (
+                  <RaceConditionDemo 
                     contractService={contractService}
                     userAddress={userAddress}
                   />
-                  
-                  {/* Vulnerabilidad 3: Admin Panel Bypass + IDOR */}
-                  <VulnerableAdminPanel 
+                ) : (
+                  <VaultManager 
                     contractService={contractService}
                     userAddress={userAddress}
                   />
-    
+                )}
+              </>
+            )}
+          </div>
+        </main>
 
-                </div>
-              ) : activeTab === 'race-demo' ? (
-                <RaceConditionDemo 
-                  contractService={contractService}
-                  userAddress={userAddress}
-                />
-              ) : (
-                <VaultManager 
-                  contractService={contractService}
-                  userAddress={userAddress}
-                />
-              )}
-            </>
-          )}
-        </div>
-      </main>
-
-      <footer className="footer">
-        <div className="container">
-          <p className="warning-text">
-            ⚠️ This is a vulnerable dApp for educational purposes only
-          </p>
-        </div>
-      </footer>
-    </div>
+        <footer className="footer">
+          <div className="container">
+            <p className="warning-text">
+              ⚠️ This is a vulnerable dApp for educational purposes only
+            </p>
+          </div>
+        </footer>
+      </div>
+    </UserProvider>
   );
 }
 

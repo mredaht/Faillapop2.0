@@ -1,5 +1,6 @@
 import React from 'react';
 import { Item, ItemStateHelpers } from '../types/Item';
+import { useUser } from '../context/UserContext';
 
 interface ItemListProps {
   items: Item[];
@@ -20,6 +21,15 @@ const getStatusBadgeClass = (state: number): string => {
 };
 
 export const ItemList: React.FC<ItemListProps> = ({ items, onBuyItem, userAddress }) => {
+  const { getDisplayPrice, priceManipulation, refreshCounter } = useUser();
+  
+  // Debug logging (only when manipulation is active)
+  if (priceManipulation.isActive) {
+    console.log('🔍 ItemList rendering with priceManipulation:', priceManipulation, 'refreshCounter:', refreshCounter);
+  }
+  
+  // No modificar los items, usar la lógica del contexto directamente
+  
   if (items.length === 0) {
     return (
       <div className="no-items">
@@ -29,11 +39,23 @@ export const ItemList: React.FC<ItemListProps> = ({ items, onBuyItem, userAddres
   }
 
   return (
-    <div className="items-grid">
-      {items.map((item) => {
+    <div>
+      <div className="items-grid">
+        {items.map((item) => {
         const isYourItem = item.seller.toLowerCase() === userAddress.toLowerCase();
+        const displayPrice = getDisplayPrice(item.id, item.price);
+        
+        // Marcar como manipulado si este item está siendo atacado
+        const isManipulated = priceManipulation.isActive && 
+                            priceManipulation.manipulatedItemId === item.id;
+        
+        // Debug logging for each item (only when manipulation is active)
+        if (priceManipulation.isActive) {
+          console.log(`🔍 Item ${item.id}: actualPrice=${item.price}, displayPrice=${displayPrice}, isManipulated=${isManipulated}, originalStored=${priceManipulation.originalPrices[item.id]}, manipulatedPrice=${priceManipulation.manipulatedPrices[item.id]}`);
+        }
+        
         return (
-          <div key={item.id} className={`item-card ${isYourItem ? 'your-item' : ''}`}>
+          <div key={item.id} className={`item-card ${isYourItem ? 'your-item' : ''} ${isManipulated ? 'price-manipulated' : ''}`}>
             <div className="item-image">
               {item.imageUrl && item.imageUrl !== '' && item.imageUrl !== 'placeholder-image' && item.imageUrl !== 'failed-upload' ? (
                 <img 
@@ -56,7 +78,16 @@ export const ItemList: React.FC<ItemListProps> = ({ items, onBuyItem, userAddres
             <div className="item-details">
               <h3>{item.name}</h3>
               <p className="description">{item.description}</p>
-              <p className="price">{item.price} ETH</p>
+              <div className="price-section">
+                <p className={`price ${isManipulated ? 'cached-price' : ''}`}>
+                  {displayPrice} ETH
+                  {isManipulated && (
+                    <span className="price-status">
+                      💰 (Cached price - may be outdated)
+                    </span>
+                  )}
+                </p>
+              </div>
               <p className="seller">Seller: {item.seller.slice(0, 6)}...{item.seller.slice(-4)}</p>
               {item.buyer && (
                 <p className="buyer">Buyer: {item.buyer.slice(0, 6)}...{item.buyer.slice(-4)}</p>
@@ -108,6 +139,7 @@ export const ItemList: React.FC<ItemListProps> = ({ items, onBuyItem, userAddres
           </div>
         );
       })}
+      </div>
     </div>
   );
 }; 

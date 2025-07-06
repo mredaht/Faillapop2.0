@@ -461,4 +461,300 @@
   .attack-results {
     padding: 1.5rem;
   }
+}
+
+/* Price Manipulation Enhanced Styles */
+.price-comparison {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  border: 2px solid #dee2e6;
+}
+
+.price-display-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.original-price,
+.manipulated-price,
+.price-impact {
+  text-align: center;
+  flex: 1;
+}
+
+.original-price {
+  background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+  border: 2px solid #17a2b8;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.manipulated-price {
+  background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+  border: 2px solid #dc3545;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.price-impact {
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.price-comparison h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.price-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #2c3e50;
+  margin: 0.5rem 0;
+}
+
+.impact-value {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #e67e22;
+  margin: 0.5rem 0;
+}
+
+.price-comparison small {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.arrow {
+  font-size: 2rem;
+  color: #6c757d;
+  font-weight: bold;
+  margin: 0 1rem;
+}
+
+.current-state {
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid #6c757d;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.state-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.state-info .label {
+  font-weight: bold;
+  color: #495057;
+}
+
+.state-info .value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.state-info .value.hidden {
+  color: #6c757d;
+  background: #f8f9fa;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  border: 2px dashed #dee2e6;
+}
+
+.state-info .value.revealed {
+  color: #dc3545;
+  background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  border: 2px solid #dc3545;
+  animation: priceReveal 0.5s ease-out;
+}
+
+@keyframes priceReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.reveal-button {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.reveal-button:hover {
+  background: linear-gradient(135deg, #138496, #117a8b);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Enhanced result styles for new attack types */
+.result.ui_spoofing {
+  border-left: 4px solid #ff6b6b;
+  background: linear-gradient(135deg, #fff5f5, #ffe6e6);
+}
+
+.result.attack_reveal {
+  border-left: 4px solid #dc3545;
+  background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+  animation: attackHighlight 1s ease-out;
+}
+
+@keyframes attackHighlight {
+  0% {
+    box-shadow: 0 0 20px rgba(220, 53, 69, 0.5);
+  }
+  100% {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.result.financial_impact {
+  border-left: 4px solid #ffc107;
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+}
+
+.result.price_verification {
+  border-left: 4px solid #28a745;
+  background: linear-gradient(135deg, #d4edda, #c3e6cb);
+}
+
+/* Mobile responsiveness for price comparison */
+@media (max-width: 768px) {
+  .price-display-section {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .arrow {
+    transform: rotate(90deg);
+    margin: 0.5rem 0;
+  }
+  
+  .state-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* Price Manipulation Styles for Marketplace */
+.price-manipulated {
+  position: relative;
+  border: 2px solid #f39c12 !important;
+  background: linear-gradient(135deg, rgba(243, 156, 18, 0.1) 0%, rgba(230, 126, 34, 0.1) 100%);
+  animation: priceManipulationPulse 2s ease-in-out infinite;
+}
+
+.price-manipulated::before {
+  content: "🎭 Price Attack in Progress";
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #f39c12;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.price-section {
+  position: relative;
+}
+
+.cached-price {
+  color: #f39c12 !important;
+  font-weight: bold;
+}
+
+.price-status {
+  display: block;
+  font-size: 0.7rem;
+  color: #e67e22;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+@keyframes priceManipulationPulse {
+  0% { 
+    box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.7);
+  }
+  70% { 
+    box-shadow: 0 0 0 10px rgba(243, 156, 18, 0);
+  }
+  100% { 
+    box-shadow: 0 0 0 0 rgba(243, 156, 18, 0);
+  }
+}
+
+/* End Price Manipulation Button */
+.end-manipulation-button {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  margin-top: 1rem;
+}
+
+.end-manipulation-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.end-manipulation-button:active {
+  transform: translateY(0);
+}
+
+.manipulation-status {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+  font-weight: 500;
+}
+
+.manipulation-status.active {
+  background: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+.manipulation-status.active::before {
+  content: "🚨 ";
 } 

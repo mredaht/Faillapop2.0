@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import { Item, ItemStateHelpers } from '../types/Item';
 import { ContractService } from '../services/ContractService';
+import { useUser } from '../context/UserContext';
 
 interface ItemDetailsProps {
   item: Item;
@@ -38,6 +39,8 @@ export const ItemDetails: React.FC<ItemDetailsProps> = ({
   isSecurityDemo,
   contractService
 }) => {
+  const { getDisplayPrice, priceManipulation: globalPriceManipulation } = useUser();
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState('');
@@ -191,7 +194,14 @@ export const ItemDetails: React.FC<ItemDetailsProps> = ({
                 <div className="modal-meta-icon">💰</div>
                 <div className="modal-meta-info">
                   <p className="modal-meta-label">Price</p>
-                  <p className="modal-meta-value">{item.price} ETH</p>
+                  <p className="modal-meta-value">
+                    {getDisplayPrice(item.id, item.price)} ETH
+                    {globalPriceManipulation.isActive && globalPriceManipulation.manipulatedItemId === item.id && (
+                      <span style={{display: 'block', fontSize: '0.8rem', color: '#f39c12', fontStyle: 'italic'}}>
+                        💰 (Cached price - may be outdated)
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
 
