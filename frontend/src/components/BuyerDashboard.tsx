@@ -58,7 +58,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({ userAddress, con
       const userBuyerItems = allItems.filter(item => 
         item.buyer && 
         item.buyer.toLowerCase() === userAddress.toLowerCase() &&
-        item.state !== ItemState.Undefined // Filtro adicional para evitar items eliminados
+        item.state !== ItemState.Canceled // Filtro adicional para evitar items cancelados
       );
       
       setBuyerItems(userBuyerItems);

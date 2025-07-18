@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { create } from 'ipfs-http-client';
-import { FAILLAPOP_SHOP_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI, FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI, FAILLAPOP_PROXY_ADDRESS } from '../contracts/config';
+import { SHOP_CONTRACT_ADDRESS, FAILLAPOP_SHOP_ABI, FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI, VAULT_CONTRACT_ADDRESS, FAILLAPOP_VAULT_ABI, PROXY_CONTRACT_ADDRESS } from '../contracts/config';
 import { Item, ItemState, Dispute, Sale } from '../types/Item';
 import { EthereumProvider } from '../types/ethereum';
 
@@ -68,26 +68,26 @@ export class ContractService {
           }
         }
         
-        this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI.abi, this.provider);
-        this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
+        this.contract = new ethers.Contract(PROXY_CONTRACT_ADDRESS, FAILLAPOP_SHOP_ABI.abi, this.provider);
+        this.vaultContract = new ethers.Contract(VAULT_CONTRACT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
         this.tokenContract = new ethers.Contract(FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI.abi, this.provider);
         this.signer = (this.provider as ethers.providers.Web3Provider).getSigner();
       } else {
         console.log('No Ethereum provider found, using read-only provider');
         this.provider = new ethers.providers.JsonRpcProvider('http://localhost:8545');
-        this.contract = new ethers.Contract(FAILLAPOP_PROXY_ADDRESS, FAILLAPOP_SHOP_ABI.abi, this.provider);
-        this.vaultContract = new ethers.Contract(FAILLAPOP_VAULT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
+        this.contract = new ethers.Contract(PROXY_CONTRACT_ADDRESS, FAILLAPOP_SHOP_ABI.abi, this.provider);
+        this.vaultContract = new ethers.Contract(VAULT_CONTRACT_ADDRESS, FAILLAPOP_VAULT_ABI.abi, this.provider);
         this.tokenContract = new ethers.Contract(FAILLAPOP_TOKEN_ADDRESS, FAILLAPOP_TOKEN_ABI.abi, this.provider);
         this.signer = null; // No signer available with read-only provider
       }
 
       console.log('Verifying contract deployment...');
-      const proxyCode = await this.provider.getCode(FAILLAPOP_PROXY_ADDRESS);
+      const proxyCode = await this.provider.getCode(PROXY_CONTRACT_ADDRESS);
       if (proxyCode === '0x') {
         throw new Error('Proxy contract not deployed at the specified address');
       }
 
-      const vaultCode = await this.provider.getCode(FAILLAPOP_VAULT_ADDRESS);
+      const vaultCode = await this.provider.getCode(VAULT_CONTRACT_ADDRESS);
       if (vaultCode === '0x') {
         throw new Error('Vault contract not deployed at the specified address');
       }
@@ -303,11 +303,11 @@ export class ContractService {
     const items: Item[] = [];
 
     for (let i = 0; i < itemCount; i++) {
-      const item = await this.contract.offeredItems(i);
+      const item = await this.contract.querySale(i);
       const state = item.state as ItemState;
       
-      // Filtrar items que están en estado Undefined (eliminados)
-      if (state === ItemState.Undefined) {
+      // Solo incluir items que tengan un seller válido (no eliminados)
+      if (item.seller === ethers.constants.AddressZero) {
         continue;
       }
       
@@ -602,11 +602,11 @@ export class ContractService {
     const items: Item[] = [];
 
     for (let i = 0; i < itemCount; i++) {
-      const item = await this.contract.offeredItems(i);
+      const item = await this.contract.querySale(i);
       
-      // Filtrar items que están en estado Undefined (eliminados)
+      // Solo incluir items que tengan un seller válido (no eliminados)
       const state = item.state as ItemState;
-      if (state === ItemState.Undefined) {
+      if (item.seller === ethers.constants.AddressZero) {
         continue;
       }
       

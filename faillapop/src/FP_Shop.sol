@@ -15,61 +15,9 @@ import {Initializable} from "@openzeppelin-upgradeable/contracts@v5.0.1/proxy/ut
     @notice The contract allows anyone to sell and buy goods in a decentralized manner! The seller has to lock funds to avoid malicious behaviour.
         In addition, unhappy buyers can open a claim and the DAO will decide if the seller misbehaved or not.
     @dev Security review is pending... should we deploy this?
-    @custom:ctf This contract is part of JC's mock-audit exercise at https://github.com/jcr-security/solidity-security-teaching-resources
+    @custom:ctf This contract is part of JC's mock-audit exercise at https://github.com/jcr-security/faillapop
 */
 contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
-
-    /************************************** Enum and structs *******************************************************/
-
-    /**
-        @dev A Sale can be in one of three states: 
-        `Selling` deal still active
-        `Disputed` the buyer submitted a claim
-        `Pending` waiting buyer confirmation
-        `Sold` deal is over, no claim was submitted
-        `Vacation` the seller is on vacation, sale halted
-    */
-    enum State {
-        Undefined,
-        Selling,
-        Pending,
-        Disputed,
-        Sold,
-        Vacation
-    }
-
-    /**
-        @dev A Sale struct represent each of the active sales in the shop.
-        @param seller The address of the seller
-        @param buyer The address of the buyer, if any
-        @param title The title of the item being sold
-        @param description A description of the item being sold
-        @param price The price in Ether of the item being sold
-        @param state The current state of the sale
-     */
-    struct Sale {
-        address seller;
-        address buyer;
-        string title;
-        string description; 
-        uint256 price;
-        State state;
-        uint256 buyTimestamp;
-    }  
-
-    /**
-        @dev A Dispute struct represent each of the active disputes in the shop.
-        @param itemId The ID of the item being disputed
-        @param disputeTimestamp The timestamp of the dispute
-        @param buyerReasoning The reasoning of the buyer for the claim
-        @param sellerReasoning The reasoning of the seller against the claim
-     */
-    struct Dispute {
-        uint256 disputeId;
-        uint256 disputeTimestamp;
-        string buyerReasoning;
-        string sellerReasoning;
-    }  
 
     /************************************** Constants *******************************************************/
 
@@ -83,6 +31,86 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
     uint256 public constant MAX_DISPUTE_WAITING_FOR_REPLY = 15 days;
     ///@notice The maximum time a sale can be pending
     uint256 public MAX_PENDING_TIME = 30 days;
+
+    /************************************** Types *******************************************************/
+
+    /**
+        @notice Enum representing the state of a sale
+    */
+    enum State {
+        Selling,        // Item is available for sale
+        Pending,        // Item has been bought, waiting for confirmation
+        Disputed,       // Sale is being disputed
+        Vacation,       // Seller is on vacation mode
+        Canceled,       // Sale has been canceled
+        Sold            // Sale has been completed
+    }
+
+    /**
+        @notice Struct representing a sale
+    */
+    struct Sale {
+        address seller;         // Address of the seller
+        address buyer;          // Address of the buyer (0x0 if not bought yet)
+        string title;           // Title of the item
+        string description;     // Description of the item
+        uint256 price;          // Price in wei
+        State state;            // Current state of the sale
+        uint256 buyTimestamp;   // When the item was bought
+    }
+
+    /**
+        @notice Struct representing a dispute
+    */
+    struct Dispute {
+        uint256 disputeId;          // ID of the dispute in the DAO
+        uint256 timestamp;          // When the dispute was created
+        string buyerReasoning;      // Buyer's reasoning for the dispute
+        string sellerReasoning;     // Seller's response to the dispute
+    }
+
+    /************************************** Events *******************************************************/
+
+    /**
+        @notice Event emitted when an item is bought
+        @param buyer The address of the buyer
+        @param itemId The ID of the item bought
+    */
+    event Buy(address indexed buyer, uint256 indexed itemId);
+
+    /**
+        @notice Event emitted when a new item is listed for sale
+        @param itemId The ID of the new item
+        @param title The title of the item
+    */
+    event NewItem(uint256 indexed itemId, string title);
+
+    /**
+        @notice Event emitted when an item is modified
+        @param itemId The ID of the modified item
+        @param newTitle The new title of the item
+    */
+    event ModifyItem(uint256 indexed itemId, string newTitle);
+
+    /**
+        @notice Event emitted when a buyer is reimbursed
+        @param buyer The address of the buyer
+        @param amount The amount reimbursed
+    */
+    event Reimburse(address indexed buyer, uint256 amount);
+
+    /**
+        @notice Event emitted when a seller is blacklisted
+        @param seller The address of the blacklisted seller
+    */
+    event BlacklistSeller(address indexed seller);
+
+    /**
+        @notice Event emitted when a dispute is opened
+        @param buyer The address of the buyer who opened the dispute
+        @param itemId The ID of the disputed item
+    */
+    event OpenDispute(address indexed buyer, uint256 indexed itemId);
 
     /************************************** State vars *******************************************************/
 
@@ -108,22 +136,7 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
     IFP_DAO public daoContract;
 
 
-    /************************************** Events and modifiers *****************************************************/
-    
-    ///@notice Emitted when a user buys an item, contains the user address and the item ID
-    event Buy(address user, uint256 item);
-    ///@notice Emitted when a user creates a new sale, contains the item ID and the title of the item
-    event NewItem(uint256 id, string title);
-    ///@notice Emitted when a user modifies a sale, contains the item ID and the title of the item
-    event ModifyItem(uint256 id, string title);
-    ///@notice Emitted when a user disputes a sale, contains the user address and the item ID
-    event OpenDispute(address user, uint256 item);
-    ///@notice Emitted when a user received a refund, contains the user address and the amount
-    event Reimburse(address user, uint256 amount);
-    ///@notice Emitted when a user receives an reward NFT, contains the user address
-    event AwardNFT(address user);
-    ///@notice Emitted when a user is blacklisted, contains the user address
-    event BlacklistSeller(address seller);
+    /************************************** Modifiers *****************************************************/
 
     ///@notice Check if the caller is not blacklisted
     modifier notBlacklisted() {
@@ -156,84 +169,31 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
     }
 
     /**
-        @notice Endpoint to buy an item
+        @notice Endpoint to buy an item (FULLY VULNERABLE VERSION)
         @param itemId The ID of the item being bought
         @dev The user must send the exact amount of Ether to buy the item
-        @dev ⚠️ HIGHLY VULNERABLE: Multiple race conditions and price manipulation possible
+        @dev 🚨 CRITICAL VULNERABILITY: Multiple buyers can purchase the same item!
      */
     function doBuy(uint256 itemId) external payable {
         require(offeredItems[itemId].seller != address(0), "itemId does not exist");
         
-        // VULNERABILITY 1: Store initial state for checking, but don't enforce it atomically
-        State initialState = offeredItems[itemId].state;
+        // 🚨 VULNERABILITY: REMOVED STATE CHECK - Multiple buyers can purchase!
+        // require(offeredItems[itemId].state == State.Selling, "Item cannot be bought");
         
-        // VULNERABILITY 2: Allow purchases even if item is already pending (weak check)
-        // This allows multiple buyers to "win" the race condition
-        require(
-            initialState == State.Selling || initialState == State.Pending, 
-            "Item cannot be bought"
-        );
-        
-        // VULNERABILITY 3: Price can be changed between this check and the state update
-        // Store the price at the time of check (but don't use it for validation)
-        uint256 priceAtCheck = offeredItems[itemId].price;
-        
-        require(msg.value >= priceAtCheck, "Incorrect amount of Ether sent");
+        require(msg.value >= offeredItems[itemId].price, "Incorrect amount of Ether sent");
         require(
             !hasRole(BLACKLISTED_ROLE, offeredItems[itemId].seller),
             "Seller is blacklisted"
         );
         
-        // VULNERABILITY 4: Simulate network delay or complex computation
-        // This creates a LONG window for race conditions and price manipulation
-        _simulateProcessingDelay(itemId);
+        // 🚨 RACE CONDITION: Multiple transactions can execute simultaneously!
+        // Each buyer gets set as THE buyer, last one wins!
         
-        // VULNERABILITY 5: Check state again, but allow multiple buyers if it's still "reasonable"
-        // This creates a race condition where multiple transactions can proceed
-        if (offeredItems[itemId].state == State.Selling) {
-            // First buyer sets it to Pending
-            offeredItems[itemId].buyer = msg.sender;
-            offeredItems[itemId].state = State.Pending;
-            offeredItems[itemId].buyTimestamp = block.timestamp;
-        } else if (offeredItems[itemId].state == State.Pending) {
-            // VULNERABILITY 6: Allow "co-buyers" - multiple people can buy the same item!
-            // This is a critical race condition vulnerability
-            // Previous buyer gets overwritten - last transaction wins!
-            offeredItems[itemId].buyer = msg.sender;
-            offeredItems[itemId].buyTimestamp = block.timestamp;
-            // State remains Pending, but buyer changes!
-        }
+        offeredItems[itemId].buyer = msg.sender;
+        offeredItems[itemId].state = State.Pending;
+        offeredItems[itemId].buyTimestamp = block.timestamp;
         
-        // VULNERABILITY 7: Always emit Buy event, even for race condition "losers"
-        // This creates confusion and allows multiple "successful" purchases
         emit Buy(msg.sender, itemId);
-    }
-    
-    /**
-        @notice Simulates processing delay to create race condition window
-        @param itemId The ID of the item being processed
-        @dev This creates a LONG vulnerability window where price can be manipulated
-        @dev ⚠️ VULNERABILITY: Extended processing time allows multiple transactions to proceed
-     */
-    function _simulateProcessingDelay(uint256 itemId) internal view {
-        // Simulate some processing time by performing meaningless operations
-        // In a real scenario, this could be complex business logic, external calls, etc.
-        uint256 dummy = 0;
-        
-        // VULNERABILITY: Much longer processing time to create bigger race condition window
-        for (uint256 i = 0; i < 100; i++) {
-            dummy += offeredItems[itemId].price + block.timestamp + i;
-            // Additional nested loop to create more delay
-            for (uint256 j = 0; j < 10; j++) {
-                dummy += offeredItems[itemId].price * j + block.number + i;
-            }
-        }
-        
-        // Store dummy value to prevent optimization (though it doesn't matter much)
-        // This simulates expensive computation that takes time
-        if (dummy > 0) {
-            // Do nothing, just prevent optimization
-        }
     }
 
     /**
@@ -281,7 +241,7 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
         if (msg.sender == offeredItems[itemId].buyer) { 
             if(bytes(disputedItems[itemId].sellerReasoning).length == 0) {
                 // Buyer cancels the dispute, the seller is unresponsive    
-                require( (block.timestamp - disputedItems[itemId].disputeTimestamp) >= MAX_DISPUTE_WAITING_FOR_REPLY, "Insufficient elapsed time" );
+                require( (block.timestamp - disputedItems[itemId].timestamp) >= MAX_DISPUTE_WAITING_FOR_REPLY, "Insufficient elapsed time" );
                 delete disputedItems[itemId];
                 offeredItems[itemId].state = State.Sold;
                 // Seller should not be paid
@@ -334,7 +294,6 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
         @param newTitle New title of the item being sold
         @param newDesc New description of the item being sold
         @param newPrice New price in Ether of the item being sold
-        @dev ⚠️ VULNERABLE: No protection against price manipulation during active purchases
      */
     function modifySale(uint256 itemId, string calldata newTitle, string calldata newDesc, uint256 newPrice) external {
         require(offeredItems[itemId].state == State.Selling, "Sale can't be modified");
@@ -342,9 +301,6 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
         require(bytes(newTitle).length > 0, "Title cannot be empty");
         require(bytes(newDesc).length > 0, "Description cannot be empty");
         require(offeredItems[itemId].seller == msg.sender, "Only the seller can modify the sale");   	
-        
-        // VULNERABILITY: No check for pending transactions or race conditions
-        // A seller can change the price while buyers are in the middle of a purchase
         
         // Update vault
         uint256 priceDifference;
@@ -356,40 +312,36 @@ contract FP_Shop is IFP_Shop, AccessControlUpgradeable  {
             vaultContract.doLock(msg.sender, priceDifference);
         }
 
-        // Update details - This happens immediately without any locks
+        // Update details
         offeredItems[itemId].title = newTitle;         
         offeredItems[itemId].description = newDesc;    
         offeredItems[itemId].price = newPrice;
 
         emit ModifyItem(itemId, newTitle);
     }
-    
+
     /**
         @notice Quick price change function for sellers (VULNERABLE)
         @param itemId ID of the item being modified
         @param newPrice New price in Ether of the item being sold
-        @dev ⚠️ HIGHLY VULNERABLE: Allows instant price changes during purchases
      */
     function quickPriceChange(uint256 itemId, uint256 newPrice) external {
         require(offeredItems[itemId].state == State.Selling, "Sale can't be modified");
         require(newPrice > 0, "Price must be greater than 0");
         require(offeredItems[itemId].seller == msg.sender, "Only the seller can modify the sale");
         
-        // VULNERABILITY: No validation, no delays, no protection
-        // This creates a perfect race condition opportunity
-        uint256 oldPrice = offeredItems[itemId].price;
-        offeredItems[itemId].price = newPrice;
-        
-        // Update vault accordingly
-        if (oldPrice > newPrice) {
-            uint256 priceDifference = oldPrice - newPrice;
+        // Update vault - handle price difference
+        uint256 priceDifference;
+        if (offeredItems[itemId].price > newPrice) {
+            priceDifference = offeredItems[itemId].price - newPrice;
             vaultContract.doUnlock(msg.sender, priceDifference);
-        } else if (oldPrice < newPrice) {
-            uint256 priceDifference = newPrice - oldPrice;
+        } else if(offeredItems[itemId].price < newPrice) {
+            priceDifference = newPrice - offeredItems[itemId].price; 
             vaultContract.doLock(msg.sender, priceDifference);
         }
-        
-        emit ModifyItem(itemId, offeredItems[itemId].title);
+
+        // Update price quickly
+        offeredItems[itemId].price = newPrice;
     }
 
     /**
